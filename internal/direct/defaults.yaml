@@ -1,0 +1,12 @@
+syscall:
+  exports:
+    EBADFD:
+      type: EXPORT
+      replace: EBADF
+
+golang.org/x/sys/unix:
+  exports:
+    MAP_ANON:
+      type: CONST
+      replace: 0x0
+      

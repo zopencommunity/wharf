@@ -1,0 +1,4 @@
+module: github.com/prometheus/prometheus
+paths:
+  - github.com/prometheus/prometheus/cmd/...
+version: v2.37.6

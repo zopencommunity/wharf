@@ -1,0 +1,3 @@
+module: github.com/docker/docker
+paths:
+ - github.com/docker/docker/client
