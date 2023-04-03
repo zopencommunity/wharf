@@ -491,6 +491,10 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 
 	for _, pkg := range pkgs {
 		fmt.Println("#", pkg.ImportPath)
+		// Quick fix because we would lose the syntax on import change
+		if err := pkg.LoadSyntax(); err != nil {
+			return err
+		}
 		if pkg.CfgIdx == 0 {
 			panic("trying to patch using default config (no changes)")
 		}
