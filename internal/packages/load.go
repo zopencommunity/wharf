@@ -17,8 +17,8 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.ibm.com/open-z/wharf/internal/tags"
-	"github.ibm.com/open-z/wharf/internal/util"
+	"github.com/zosopentools/wharf/internal/tags"
+	"github.com/zosopentools/wharf/internal/util"
 )
 
 type importCycleError struct {

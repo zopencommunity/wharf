@@ -5,7 +5,7 @@
 package porting
 
 import (
-	"github.ibm.com/open-z/wharf/internal/packages"
+	"github.com/zosopentools/wharf/internal/packages"
 )
 
 // pstate states

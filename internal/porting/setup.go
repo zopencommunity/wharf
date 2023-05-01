@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.ibm.com/open-z/wharf/internal/direct"
+	"github.com/zosopentools/wharf/internal/direct"
 )
 
 type Config struct {

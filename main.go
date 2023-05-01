@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.ibm.com/open-z/wharf/internal/direct"
-	"github.ibm.com/open-z/wharf/internal/porting"
-	"github.ibm.com/open-z/wharf/internal/util"
+	"github.com/zosopentools/wharf/internal/direct"
+	"github.com/zosopentools/wharf/internal/porting"
+	"github.com/zosopentools/wharf/internal/util"
 )
 
 var dryRunFlag *bool
