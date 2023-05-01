@@ -11,9 +11,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.ibm.com/open-z/wharf/internal/direct"
-	"github.ibm.com/open-z/wharf/internal/packages"
-	"github.ibm.com/open-z/wharf/internal/util"
+	"github.com/zosopentools/wharf/internal/direct"
+	"github.com/zosopentools/wharf/internal/packages"
+	"github.com/zosopentools/wharf/internal/util"
 )
 
 type modulepatch struct {
