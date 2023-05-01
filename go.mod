@@ -1,7 +1,7 @@
 // Licensed Materials - Property of IBM
 // Copyright IBM Corp. 2023.
 // US Government Users Restricted Rights - Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-module github.ibm.com/open-z/wharf
+module github.com/zosopentools/wharf
 
 go 1.18
 
