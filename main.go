@@ -21,6 +21,7 @@ var dryRunFlag *bool
 var verboseFlag *bool
 var testFlag *bool
 var configFlag *string
+var vcsFlag *bool
 
 var tagsFlag *string
 var helpFlag *bool
@@ -32,6 +33,7 @@ func main() {
 	dryRunFlag = flag.Bool("n", false, "Enable dry mode, make suggestions but don't preform changes")
 	verboseFlag = flag.Bool("v", false, "Enable verbose output")
 	testFlag = flag.Bool("t", false, "Test the package after the porting stage")
+	vcsFlag = flag.Bool("q", false, "Clone the package from VCS")
 	configFlag = flag.String("config", "", "Config for additional code edits")
 	flag.Parse()
 
@@ -66,7 +68,7 @@ func main() {
 
 	paths := flag.Args()
 
-	if err := main1(paths, *tagsFlag, *verboseFlag, *dryRunFlag); err != nil {
+	if err := main1(paths, *tagsFlag, *verboseFlag, *dryRunFlag, *vcsFlag); err != nil {
 		fmt.Println(err.Error())
 		fmt.Println("Porting failed due to errors mentioned above")
 	} else {
@@ -84,7 +86,7 @@ func main() {
 	}
 }
 
-func main1(paths []string, tags string, verbose bool, dryRun bool) error {
+func main1(paths []string, tags string, verbose bool, dryRun bool, useVCS bool) error {
 	// Verify that we are running in a workspace
 	goenv, err := util.GoEnv()
 	if err != nil {
@@ -107,5 +109,6 @@ func main1(paths []string, tags string, verbose bool, dryRun bool) error {
 		BuildTags:  strings.Split(tags, ","),
 		Verbose:    verbose,
 		DryRun:     dryRun,
+		UseVCS:     useVCS,
 	})
 }

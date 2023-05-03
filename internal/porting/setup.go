@@ -37,6 +37,10 @@ type Config struct {
 	//
 	DryRun bool
 
+	// Use VCS when importing modules
+	//
+	UseVCS bool
+
 	// Verbose patch instructions
 	//
 	Verbose bool

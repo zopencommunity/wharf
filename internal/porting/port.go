@@ -503,8 +503,18 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 		if !pkg.Module.Main {
 			path := filepath.Join(cfg.ImportDir, pkg.Module.Path)
 
-			if err := util.CopyModule(pkg.Module.Dir, path, pkg.Module.Path); err != nil {
-				return err
+			if cfg.UseVCS {
+				if err := util.CloneModuleFromVCS(
+					path,
+					pkg.Module.Path,
+					strings.TrimSuffix(pkg.Module.Version, "+incompatible"),
+					); err != nil {
+					return err
+				}
+			} else {
+				if err := util.CloneModuleFromCache(pkg.Module.Dir, path, pkg.Module.Path); err != nil {
+					return err
+				}
 			}
 
 			if err := util.GoWorkEditDropReplace(pkg.Module.Path); err != nil {

@@ -1,8 +1,7 @@
-/*
-Licensed Materials - Property of IBM
-Copyright IBM Corp. 2023.
-US Government Users Restricted Rights - Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-*/
+// Licensed Materials - Property of IBM
+// Copyright IBM Corp. 2023.
+// US Government Users Restricted Rights - Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+
 package main
 
 import (
@@ -142,7 +141,7 @@ func run(repo *vcs.RepoRoot, module string, paths []string, version string, t *t
 	}()
 
 	// TODO: set up a test build for this that runs in a child executable
-	if err := main1(paths, "", false, false); err != nil {
+	if err := main1(paths, "", false, false, false); err != nil {
 		t.Fatal(err)
 	}
 }

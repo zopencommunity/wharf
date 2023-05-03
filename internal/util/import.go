@@ -11,10 +11,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"golang.org/x/tools/go/vcs"
 )
 
 // Copies a module to the given path
-func CopyModule(srcdir string, dstdir string, modpath string) error {
+func CloneModuleFromCache(srcdir string, dstdir string, modpath string) error {
 	// Copy module to workspace
 	if err := copyAll(dstdir, srcdir); err != nil {
 		return err
@@ -23,13 +25,19 @@ func CopyModule(srcdir string, dstdir string, modpath string) error {
 	return generate(filepath.Join(dstdir, "go.mod"), goModTemplate(modpath))
 }
 
-func GitCloneModule(repo string, dest string, modpath string) error {
-	// Copy module to workspace
-	if err := GitClone(repo, dest); err != nil {
+// Copies a module to the given path
+func CloneModuleFromVCS(dstdir string, modpath string, version string) error {
+	repo, err := vcs.RepoRootForImportPath(modpath, false)
+	if err != nil {
 		return err
 	}
 
-	return generate(filepath.Join(dest, "go.mod"), goModTemplate(modpath))
+	err = repo.VCS.CreateAtRev(dstdir, repo.Repo, version)
+	if err != nil {
+		return err
+	}
+
+	return generate(filepath.Join(dstdir, "go.mod"), goModTemplate(modpath))
 }
 
 // Util copy function
