@@ -37,6 +37,18 @@ func FindImportName(file *ast.File, path string) *string {
 // [v].[symbol] undefined (type [type] has no field or method [symbol])
 // [v].[symbol] undefined (type [type] has no field or method [symbol], but does have [other])
 var (
+	// Go 1.20 matchers and older
+	//
+
+	_UNDEFINED_NAME_ERR_MATCHER_NEW = regexp.MustCompile(`undefined: (\w+)`)
+	// undeclared: terminalWidth
+
+	_UNDEFINED_PACKAGE_ERR_MATCHER_NEW = regexp.MustCompile(`undefined: (\w+)\.(\w+)`)
+	// undeclared: syscall.EBADF
+
+	// Pre Go 1.20 matchers
+	//
+
 	_UNDECLARED_NAME_ERR_MATCHER = regexp.MustCompile(`undeclared name: (\w+)`)
 	// undeclared name: terminalWidth
 
@@ -80,7 +92,18 @@ type TCBadOther struct{}
 func (TCBadOther) teid() {}
 
 func parseTypeErrorReason(err types.Error) TypeErrId {
-	if match := _UNDECLARED_NAME_ERR_MATCHER.FindStringSubmatch(err.Msg); match != nil {
+	if match := _UNDEFINED_PACKAGE_ERR_MATCHER_NEW.FindStringSubmatch(err.Msg); match != nil {
+		return TCBadImportName{
+			Name: TCBadName{
+				Name: match[2],
+			},
+			PkgName: match[1],
+		}
+	} else if match := _UNDEFINED_NAME_ERR_MATCHER_NEW.FindStringSubmatch(err.Msg); match != nil {
+		return TCBadName{
+			Name: match[1],
+		}
+	} else if match := _UNDECLARED_NAME_ERR_MATCHER.FindStringSubmatch(err.Msg); match != nil {
 		return TCBadName{
 			Name: match[1],
 		}
