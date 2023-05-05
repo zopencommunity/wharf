@@ -1,3 +1,4 @@
 module: github.com/elastic/beats
 paths:
  - github.com/elastic/beats/filebeat
+long: true
