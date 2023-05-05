@@ -442,6 +442,12 @@ func loadBuildConfigs(fset *token.FileSet, jpkg *RawPackage, loadAllConfigs bool
 
 		builds[0].GoFiles = append(builds[0].GoFiles, gofile)
 
+		// Don't check tags for GOROOT packages (see https://github.com/ZOSOpenTools/wharf/issues/7)
+		if jpkg.Goroot {
+			alwaysBuild = append(alwaysBuild, gofile)
+			continue
+		}
+
 		switch cnstr := cstr.(type) {
 		case tags.All:
 			alwaysBuild = append(alwaysBuild, gofile)
