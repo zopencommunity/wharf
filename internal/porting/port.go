@@ -334,7 +334,7 @@ func port(pkg *packages.Package, cfg *Config) error {
 		})
 
 		if pkg.CfgIdx >= len(pkg.Configs) {
-			return fmt.Errorf("")
+			return fmt.Errorf("unable to find a valid config")
 		}
 
 		if len(imports) == 0 {
