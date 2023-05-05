@@ -1,7 +1,7 @@
 /*
- Licensed Materials - Property of IBM
- Copyright IBM Corp. 2023.
- US Government Users Restricted Rights - Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+Licensed Materials - Property of IBM
+Copyright IBM Corp. 2023.
+US Government Users Restricted Rights - Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 */
 package main
 
@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"embed"
 	"errors"
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -24,16 +25,25 @@ import (
 //go:embed internal/modtest/*.yaml
 var configsDir embed.FS
 
+var longTests *bool
+
 type testConfig struct {
 	Module  string
 	Paths   []string
 	Version string
+
+	// Test needs more time to complete (also won't run under normal conditions)
+	Long bool
+	// Test is known to fail (still runs but doesn't report a failed port as a failed test)
+	Fails bool
 
 	// TODO: add support for partial fixes / intermediate steps
 }
 
 func TestMain(m *testing.M) {
 	// This is currently useless, but for parsing args this will be useful
+	longTests = flag.Bool("long", false, "run long tests")
+
 	os.Exit(m.Run())
 }
 
@@ -50,6 +60,10 @@ func TestModules(t *testing.T) {
 				t.Fatalf("unable to open config: %v", err)
 			} else if err := yaml.Unmarshal(b, &cfg); err != nil {
 				t.Fatalf("unable to parse config: %v", err)
+			}
+
+			if cfg.Long && !*longTests {
+				t.Skip("disabled long tests")
 			}
 
 			repo, err := vcs.RepoRootForImportPath(cfg.Module, false)

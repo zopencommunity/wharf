@@ -1,1 +1,2 @@
 module: github.com/elastic/mmap-go
+long: true
