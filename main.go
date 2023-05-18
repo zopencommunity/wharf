@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/zosopentools/wharf/internal/direct"
 	"github.com/zosopentools/wharf/internal/porting"
 	"github.com/zosopentools/wharf/internal/util"
@@ -22,6 +23,8 @@ var verboseFlag *bool
 var testFlag *bool
 var configFlag *string
 var vcsFlag *bool
+var iDirFlag *string
+var forceFlag *bool
 
 var tagsFlag *string
 var helpFlag *bool
@@ -35,6 +38,8 @@ func main() {
 	testFlag = flag.Bool("t", false, "Test the package after the porting stage")
 	vcsFlag = flag.Bool("q", false, "Clone the package from VCS")
 	configFlag = flag.String("config", "", "Config for additional code edits")
+	iDirFlag = flag.String("d", "", "Path to store imported modules")
+	forceFlag = flag.Bool("f", false, "Force operation even if imported module path exists")
 	flag.Parse()
 
 	// Turn off log flags
@@ -49,6 +54,50 @@ func main() {
 	// Verify arg length
 	if flag.NArg() != 1 {
 		log.Fatal("No package paths provided; see 'wharf --help' for usage")
+	}
+
+	// Verify that we are running in a workspace
+	goenv, err := util.GoEnv()
+	if err != nil {
+		log.Fatal("Unable to read 'go env':", err)
+	}
+
+	// Setup import directory
+	var importDir string
+	if gowork := goenv["GOWORK"]; gowork != "" {
+		// TODO: report this when verbose flag set
+		if *iDirFlag == "" {
+			// TODO: make this relative to the current position
+			// so that `go work use` uses a relative position instead of absolute
+			importDir = filepath.Join(filepath.Dir(gowork), "wharf_port")
+		} else {
+			importDir = *iDirFlag
+		}
+
+		if *verboseFlag {
+			fmt.Println("Import path set to:", importDir)
+		}
+	} else {
+		log.Fatal("No Go Workspace found; please initialize one using `go work init` and add packages to port")
+	}
+
+	// Bypass if '-f' flag is included (this is intended for scripts to be able to use if necessary)
+	if !*forceFlag {
+		_, dstErr := os.Lstat(importDir)
+		if dstErr == nil {
+			if isatty.IsTerminal(os.Stdin.Fd()) {
+				fmt.Printf("WARNING: Import destination already exists (%v)\n", importDir)
+				fmt.Println("WARNING: Running Wharf may cause some data to get overridden")
+				fmt.Print("Run anyways? [y/N]: ")
+				var confirm string
+				fmt.Scanln(&confirm)
+				if confirm != "y" && confirm != "Y" {
+					os.Exit(0)
+				}
+			} else {
+				log.Fatalf("Import destination already exists (%v)\nWill not overwrite. Aborting.", importDir)
+			}
+		}
 	}
 
 	// Handle config file argument
@@ -66,9 +115,11 @@ func main() {
 		direct.Apply(cfg)
 	}
 
+	tags := strings.Split(*tagsFlag, ",")
+
 	paths := flag.Args()
 
-	if err := main1(paths, *tagsFlag, *verboseFlag, *dryRunFlag, *vcsFlag); err != nil {
+	if err := main1(paths, tags, *verboseFlag, *dryRunFlag, *vcsFlag, importDir, goenv); err != nil {
 		fmt.Println(err.Error())
 		fmt.Println("Porting failed due to errors mentioned above")
 	} else {
@@ -86,27 +137,21 @@ func main() {
 	}
 }
 
-func main1(paths []string, tags string, verbose bool, dryRun bool, useVCS bool) error {
-	// Verify that we are running in a workspace
-	goenv, err := util.GoEnv()
-	if err != nil {
-		log.Fatal("Unable to read 'go env':", err)
-	}
-
-	var importDir string
-	if gowork := goenv["GOWORK"]; gowork != "" {
-		// TODO: let this be customizable
-		// TODO: report this when verbose flag set
-		importDir = filepath.Join(filepath.Dir(gowork), "wharf_port")
-	} else {
-		log.Fatal("No Go Workspace found; please initialize one using `go work init` and add packages to port")
-	}
+func main1(
+	paths []string,
+	tags []string,
+	verbose bool,
+	dryRun bool,
+	useVCS bool,
+	importDir string,
+	goenv map[string]string,
+) error {
 
 	return porting.Port(paths, &porting.Config{
 		GoEnv:      goenv,
 		ImportDir:  importDir,
 		Directives: direct.Config,
-		BuildTags:  strings.Split(tags, ","),
+		BuildTags:  tags,
 		Verbose:    verbose,
 		DryRun:     dryRun,
 		UseVCS:     useVCS,
