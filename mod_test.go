@@ -17,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/zosopentools/wharf/internal/util"
 	"golang.org/x/tools/go/vcs"
 	"gopkg.in/yaml.v3"
 )
@@ -134,6 +135,11 @@ func run(repo *vcs.RepoRoot, module string, paths []string, version string, t *t
 		os.Unsetenv("GOWORK")
 	})
 
+	goenv, err := util.GoEnv()
+	if err != nil {
+		t.Fatal("Unable to read 'go env':", err)
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatal(r)
@@ -141,7 +147,7 @@ func run(repo *vcs.RepoRoot, module string, paths []string, version string, t *t
 	}()
 
 	// TODO: set up a test build for this that runs in a child executable
-	if err := main1(paths, "", false, false, false); err != nil {
+	if err := main1(paths, []string{}, false, false, false, filepath.Join(dir, "wharf_port"), goenv); err != nil {
 		t.Fatal(err)
 	}
 }
