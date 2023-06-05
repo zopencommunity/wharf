@@ -14,11 +14,26 @@ This program can:
 * Provide insights into/solutions to possible issues with package
 * Make edits and run commands to ensure the package can be installed on z/OS without error
 
+## Installation
+
+### Go Install
+
+```
+go install github.com/zosopentools/wharf
+```
+
+### From source
+
+```
+git clone git@github.com:zosopentools/wharf && cd wharf
+go install
+```
+
 ## Usage
 
 Run it similarly to `go build`.
 
-`wharf [-d] [-v] [-t] [-tags] <packages>`
+`wharf [-n] [-v] [-t] [-q] [-d] [-f] [-tags] <packages>`
 
 Currently wharf only supports executing within a workspace (which means operating similarly to `go build -mod=readonly`)
 
@@ -30,16 +45,46 @@ Currently wharf only supports executing within a workspace (which means operatin
 **-n**
 Dry-run mode; disables edits, script will only make suggestions
 
-**-t**
-Run unit tests found in packages that were altered and output their result (ignored if in dry-run mode)
-
 **-v**
 Enable verbose output
 
-### Planned Features
+**-t**
+Run unit tests found in packages that were altered and output their result (ignored if in dry-run mode)
 
-- Better CGo support
-- Support for workspace-less environments
+**-q**
+Clone ported dependencies from VCS instead of copying from module cache (keeps VCS information)
+
+**-d**
+Base path to clone imported modules to
+
+**-f**
+Force operation even in unsafe situations (such as imported module path already existing) - useful for scripts
+
+### Example
+
+#### Set up workspace
+
+```
+mkdir wharf-work && cd wharf-work
+go work init
+```
+
+#### Clone module to port
+
+```
+git clone git@github.com/prometheus/prometheus
+go work use ./prometheus
+```
+
+#### Run Wharf
+```
+wharf ./prometheus/cmd/...
+```
+
+#### Install ported packages
+```
+go install ./prometheus/cmd/...
+```
 
 ## Understanding the Porting Process
 
@@ -71,3 +116,8 @@ This process works because:
 After attempting to update a module, if the module has any packages that contain errors we naively revert back to the original version of the module that was used. Therefore we lock in the version of the source code we use. Go also ensures that there can never be import cycles in code, therefore it is impossible that trying to fix a package further down in the dependency graph will impact a package higher up in the chain.
 
 In otherwords - once we begin get past step 1 for a package we will know for a fact that the dependency graph will not change at that level or above, and we can safely work on it.
+
+### Planned Features
+
+- Better CGo support
+- Support for workspace-less environments
