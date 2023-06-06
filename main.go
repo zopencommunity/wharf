@@ -123,7 +123,7 @@ func main() {
 		fmt.Println(err.Error())
 		fmt.Println("Porting failed due to errors mentioned above")
 	} else {
-		fmt.Println("All packages ported successfully!")
+		fmt.Println("Patches applied successfully!")
 		if *testFlag {
 			// Run tests
 			// TODO: this could be better... such as run tests on packages we specifically touched as well
