@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 
 	"github.com/mattn/go-isatty"
@@ -19,18 +18,28 @@ import (
 	"github.com/zosopentools/wharf/internal/util"
 )
 
+var dryRunFlag *bool
+var verboseFlag *bool
+var testFlag *bool
+var configFlag *string
+var vcsFlag *bool
+var iDirFlag *string
+var forceFlag *bool
+
+var tagsFlag *string
+var helpFlag *bool
+
 func main() {
 	// Parse cmd line flags
-	helpFlag := flag.Bool("help", false, "Print help text")
-	tagsFlag := flag.String("tags", "", "List of build tags")
-	dryRunFlag := flag.Bool("n", false, "Enable dry mode, make suggestions but don't preform changes")
-	verboseFlag := flag.Bool("v", false, "Enable verbose output")
-	testFlag := flag.Bool("t", false, "Test the package after the porting stage")
-	vcsFlag := flag.Bool("q", false, "Clone the package from VCS")
-	configFlag := flag.String("config", "", "Config for additional code edits")
-	iDirFlag := flag.String("d", "", "Path to store imported modules")
-	forceFlag := flag.Bool("f", false, "Force operation even if imported module path exists")
-	versionFlag := flag.Bool("version", false, "Display version information")
+	helpFlag = flag.Bool("help", false, "Print help text")
+	tagsFlag = flag.String("tags", "", "List of build tags")
+	dryRunFlag = flag.Bool("n", false, "Enable dry mode, make suggestions but don't preform changes")
+	verboseFlag = flag.Bool("v", false, "Enable verbose output")
+	testFlag = flag.Bool("t", false, "Test the package after the porting stage")
+	vcsFlag = flag.Bool("q", false, "Clone the package from VCS")
+	configFlag = flag.String("config", "", "Config for additional code edits")
+	iDirFlag = flag.String("d", "", "Path to store imported modules")
+	forceFlag = flag.Bool("f", false, "Force operation even if imported module path exists")
 	flag.Parse()
 
 	// Turn off log flags
@@ -39,21 +48,6 @@ func main() {
 	// If --help is passed
 	if *helpFlag {
 		fmt.Println(helpText)
-		os.Exit(0)
-	}
-
-	if *versionFlag {
-		bi, ok := debug.ReadBuildInfo()
-		if !ok {
-			log.Fatal("Unable to get version information")
-		}
-		for _, s := range bi.Settings {
-			if s.Key == "vcs.revision" {
-				fmt.Println(s.Value)
-				os.Exit(0)
-			}
-		}
-		fmt.Println("devel - unknown")
 		os.Exit(0)
 	}
 
