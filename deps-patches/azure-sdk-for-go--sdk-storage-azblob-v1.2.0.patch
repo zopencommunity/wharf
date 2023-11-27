@@ -1,0 +1,103 @@
+From a83b60c3f3e45def5b102378cdb854a3209a1831 Mon Sep 17 00:00:00 2001
+From: v1gnesh <v1gnesh@users.noreply.github.com>
+Date: Sun, 26 Nov 2023 08:12:38 +0000
+Subject: [PATCH] Add zOS support
+
+---
+ sdk/storage/azblob/internal/shared/mmf_zos.go | 38 +++++++++++++++++++
+ sdk/storage/azfile/file/mmf_zos.go            | 38 +++++++++++++++++++
+ 2 files changed, 76 insertions(+)
+ create mode 100644 sdk/storage/azblob/internal/shared/mmf_zos.go
+ create mode 100644 sdk/storage/azfile/file/mmf_zos.go
+
+diff --git a/sdk/storage/azblob/internal/shared/mmf_zos.go b/sdk/storage/azblob/internal/shared/mmf_zos.go
+new file mode 100644
+index 0000000000..7256142b57
+--- /dev/null
++++ b/sdk/storage/azblob/internal/shared/mmf_zos.go
+@@ -0,0 +1,38 @@
++//go:build go1.18 && zos
++// +build go1.18
++// +build zos
++
++// Copyright (c) Microsoft Corporation. All rights reserved.
++// Licensed under the MIT License. See License.txt in the project root for license information.
++
++package shared
++
++import (
++	"fmt"
++	"os"
++	"syscall"
++)
++
++// mmb is a memory mapped buffer
++type Mmb []byte
++
++// newMMB creates a new memory mapped buffer with the specified size
++func NewMMB(size int64) (Mmb, error) {
++	prot, flags := syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_PRIVATE
++	addr, err := syscall.Mmap(-1, 0, int(size), prot, flags)
++	if err != nil {
++		return nil, os.NewSyscallError("Mmap", err)
++	}
++	return Mmb(addr), nil
++}
++
++// delete cleans up the memory mapped buffer
++func (m *Mmb) Delete() {
++	err := syscall.Munmap(*m)
++	*m = nil
++	if err != nil {
++		// if we get here, there is likely memory corruption.
++		// please open an issue https://github.com/Azure/azure-sdk-for-go/issues
++		panic(fmt.Sprintf("Munmap error: %v", err))
++	}
++}
+diff --git a/sdk/storage/azfile/file/mmf_zos.go b/sdk/storage/azfile/file/mmf_zos.go
+new file mode 100644
+index 0000000000..9d972de168
+--- /dev/null
++++ b/sdk/storage/azfile/file/mmf_zos.go
+@@ -0,0 +1,38 @@
++//go:build go1.18 && zos
++// +build go1.18
++// +build zos
++
++// Copyright (c) Microsoft Corporation. All rights reserved.
++// Licensed under the MIT License. See License.txt in the project root for license information.
++
++package file
++
++import (
++	"fmt"
++	"os"
++	"syscall"
++)
++
++// mmb is a memory mapped buffer
++type mmb []byte
++
++// newMMB creates a new memory mapped buffer with the specified size
++func newMMB(size int64) (mmb, error) {
++  prot, flags := syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_PRIVATE
++  addr, err := syscall.Mmap(-1, 0, int(size), prot, flags)
++	if err != nil {
++		return nil, os.NewSyscallError("Mmap", err)
++	}
++	return mmb(addr), nil
++}
++
++// delete cleans up the memory mapped buffer
++func (m *mmb) delete() {
++	err := syscall.Munmap(*m)
++	*m = nil
++	if err != nil {
++		// if we get here, there is likely memory corruption.
++		// please open an issue https://github.com/Azure/azure-sdk-for-go/issues
++		panic(fmt.Sprintf("Munmap error: %v", err))
++	}
++}
+-- 
+2.42.1
+

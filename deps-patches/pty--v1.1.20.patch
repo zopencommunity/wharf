@@ -1,0 +1,52 @@
+From 65893206ba332d9183f6aa9e8c5b0627da8717f3 Mon Sep 17 00:00:00 2001
+From: v1gnesh <v1gnesh@users.noreply.github.com>
+Date: Sun, 26 Nov 2023 03:18:30 -0500
+Subject: [PATCH] Add zOS support
+
+---
+ ioctl_inner.go |  4 ++--
+ ioctl_zos.go   | 20 ++++++++++++++++++++
+ 2 files changed, 22 insertions(+), 2 deletions(-)
+ create mode 100644 ioctl_zos.go
+
+diff --git a/ioctl_inner.go b/ioctl_inner.go
+index fd5dbef..0ad799a 100644
+--- a/ioctl_inner.go
++++ b/ioctl_inner.go
+@@ -1,5 +1,5 @@
+-//go:build !windows && !solaris && !aix
+-// +build !windows,!solaris,!aix
++//go:build !windows && !solaris && !aix && !zos
++// +build !windows,!solaris,!aix,!zos
+ 
+ package pty
+ 
+diff --git a/ioctl_zos.go b/ioctl_zos.go
+new file mode 100644
+index 0000000..9045f82
+--- /dev/null
++++ b/ioctl_zos.go
+@@ -0,0 +1,20 @@
++//go:build zos
++// +build zos
++
++package pty
++
++import "syscall"
++
++// Local syscall const values.
++const (
++	TIOCGWINSZ = syscall.TIOCGWINSZ
++	TIOCSWINSZ = syscall.TIOCSWINSZ
++)
++
++func ioctl_inner(fd, cmd, ptr uintptr) error {
++  err := syscall.Ioctl(int(fd), int(cmd), ptr)
++	if err != nil {
++		return err
++	}
++	return nil
++}
+-- 
+2.42.1
+
