@@ -1,0 +1,229 @@
+diff --git a/unix/asm_zos_s390x.s b/unix/asm_zos_s390x.s
+index 2f67ba8..8c6eb27 100644
+--- a/unix/asm_zos_s390x.s
++++ b/unix/asm_zos_s390x.s
+@@ -19,6 +19,22 @@
+ #define SS_ERRNO(x)         16(x)
+ #define SS_ERRNOJR(x)       20(x)
+
++DATA zosLibVec<>(SB)/8, $0
++GLOBL zosLibVec<>(SB), NOPTR, $8
++
++TEXT ·initZosLibVec(SB), NOSPLIT|NOFRAME, $0-0
++       MOVW PSALAA, R8
++       MOVD LCA64(R8), R8
++       MOVD CAA(R8), R8
++       MOVD EDCHPXV(R8), R8
++       MOVD R8, zosLibVec<>(SB)
++       RET
++
++TEXT ·GetZosLibVec(SB), NOSPLIT|NOFRAME, $0-0
++       MOVD zosLibVec<>(SB), R8
++       MOVD R8, ret+0(FP)
++       RET
++
+ #define LE_CALL BYTE $0x0D; BYTE $0x76; // BL R7, R6
+
+ TEXT ·clearErrno(SB),NOSPLIT,$0-0
+@@ -421,3 +437,82 @@ TEXT ·gettid(SB), NOSPLIT, $0
+        MOVD R9, ret+0(FP)
+
+        RET
++
++//
++// function to test if a pointer can be safely dereferenced (content read)
++// return 0 for succces
++//
++TEXT ·ptrtest(SB), NOSPLIT, $0-16
++       MOVD arg+0(FP), R10 // test pointer in R10
++
++       // set up R2 to point to CEECAADMC
++       BYTE $0xE3; BYTE $0x20; BYTE $0x04; BYTE $0xB8; BYTE $0x00; BYTE $0x17 // llgt  2,1208
++       BYTE $0xB9; BYTE $0x17; BYTE $0x00; BYTE $0x22                         // llgtr 2,2
++       BYTE $0xA5; BYTE $0x26; BYTE $0x7F; BYTE $0xFF                         // nilh  2,32767
++       BYTE $0xE3; BYTE $0x22; BYTE $0x00; BYTE $0x58; BYTE $0x00; BYTE $0x04 // lg    2,88(2)
++       BYTE $0xE3; BYTE $0x22; BYTE $0x00; BYTE $0x08; BYTE $0x00; BYTE $0x04 // lg    2,8(2)
++       BYTE $0x41; BYTE $0x22; BYTE $0x03; BYTE $0x68                         // la    2,872(2)
++
++       // set up R5 to point to the "shunt" path which set 1 to R3 (failure)
++       BYTE $0xB9; BYTE $0x82; BYTE $0x00; BYTE $0x33 // xgr   3,3
++       BYTE $0xA7; BYTE $0x55; BYTE $0x00; BYTE $0x04 // bras  5,lbl1
++       BYTE $0xA7; BYTE $0x39; BYTE $0x00; BYTE $0x01 // lghi  3,1
++
++       // if r3 is not zero (failed) then branch to finish
++       BYTE $0xB9; BYTE $0x02; BYTE $0x00; BYTE $0x33 // lbl1     ltgr  3,3
++       BYTE $0xA7; BYTE $0x74; BYTE $0x00; BYTE $0x08 // brc   b'0111',lbl2
++
++       // stomic store shunt address in R5 into CEECAADMC
++       BYTE $0xE3; BYTE $0x52; BYTE $0x00; BYTE $0x00; BYTE $0x00; BYTE $0x24 // stg   5,0(2)
++
++       // now try reading from the test pointer in R10, if it fails it branches to the "lghi" instruction above
++       BYTE $0xE3; BYTE $0x9A; BYTE $0x00; BYTE $0x00; BYTE $0x00; BYTE $0x04 // lg    9,0(10)
++
++       // finish here, restore 0 into CEECAADMC
++       BYTE $0xB9; BYTE $0x82; BYTE $0x00; BYTE $0x99                         // lbl2     xgr   9,9
++       BYTE $0xE3; BYTE $0x92; BYTE $0x00; BYTE $0x00; BYTE $0x00; BYTE $0x24 // stg   9,0(2)
++       MOVD R3, ret+8(FP)                                                     // result in R3
++       RET
++
++//
++// function to test if an LE function pointer is valid
++// return 0 for succces
++//
++TEXT ·funcptrtest(SB), NOSPLIT, $0-16
++       MOVD arg+0(FP), R7 // test pointer in R7
++
++       // set up R3 to point to CEECAADMC
++       BYTE $0xE3; BYTE $0x30; BYTE $0x04; BYTE $0xB8; BYTE $0x00; BYTE $0x17 // llgt  3,1208
++       BYTE $0xB9; BYTE $0x17; BYTE $0x00; BYTE $0x33                         // llgtr 3,3
++       BYTE $0xA5; BYTE $0x36; BYTE $0x7F; BYTE $0xFF                         // nilh  3,32767
++       BYTE $0xE3; BYTE $0x33; BYTE $0x00; BYTE $0x58; BYTE $0x00; BYTE $0x04 // lg    3,88(3)
++       BYTE $0xE3; BYTE $0x33; BYTE $0x00; BYTE $0x08; BYTE $0x00; BYTE $0x04 // lg    3,8(3)
++       BYTE $0x41; BYTE $0x33; BYTE $0x03; BYTE $0x68                         // la    3,872(3)
++
++       // set up R5 to point to the "shunt" path ("fail1" label) which set 1 to R6 (failure)
++       BYTE $0xB9; BYTE $0x82; BYTE $0x00; BYTE $0x66 // xgr   6,6
++       BYTE $0xA7; BYTE $0x55; BYTE $0x00; BYTE $0x04 // bras  5,lbl11
++       BYTE $0xA7; BYTE $0x69; BYTE $0x00; BYTE $0x01 // fail1  lghi  6,1
++
++       // if r6 is not zero (failed) then branch to finish
++       BYTE $0xB9; BYTE $0x02; BYTE $0x00; BYTE $0x66 // lbl11  ltgr  6,6
++       BYTE $0xA7; BYTE $0x74; BYTE $0x00; BYTE $0x19 // brc   b'0111',lbl21
++
++       // store shunt address in R5 into CEECAADMC
++       BYTE $0xE3; BYTE $0x53; BYTE $0x00; BYTE $0x00; BYTE $0x00; BYTE $0x24 // stg   5,0(3)
++
++       // now try to read the function preampble ".C.E.E.1" in entry point -16.
++       // if it fails it branches to the "lghi" instruction above (label "fail1")
++       BYTE $0xE3; BYTE $0x57; BYTE $0x00; BYTE $0x08; BYTE $0x00; BYTE $0x04                         // lg    5,8(7)
++       BYTE $0xE3; BYTE $0x50; BYTE $0x5F; BYTE $0xF0; BYTE $0xFF; BYTE $0x71                         // lay   5,-16(0,5)
++       BYTE $0xE3; BYTE $0x55; BYTE $0x00; BYTE $0x00; BYTE $0x00; BYTE $0x04                         // lg    5,0(5)
++       BYTE $0xA7; BYTE $0x25; BYTE $0x00; BYTE $0x06                                                 // bras  2,lbl31
++       BYTE $0x00; BYTE $0xC3; BYTE $0x00; BYTE $0xC5; BYTE $0x00; BYTE $0xC5; BYTE $0x00; BYTE $0xF1 // dc    x'00c300c500c500f1'
++       BYTE $0xE3; BYTE $0x52; BYTE $0x00; BYTE $0x00; BYTE $0x00; BYTE $0x21                         // lbl31  clg   5,0(2)
++       BYTE $0xA7; BYTE $0x74; BYTE $0xFF; BYTE $0xE0                                                 // brc   b'0111',fail1
++
++       // finish here, restore 0 into CEECAADMC
++       BYTE $0xB9; BYTE $0x82; BYTE $0x00; BYTE $0x22                         // lbl21  xgr   2,2
++       BYTE $0xE3; BYTE $0x23; BYTE $0x00; BYTE $0x00; BYTE $0x00; BYTE $0x24 // stg    2,0(3)
++       MOVD R6, ret+8(FP)                                                     // result in R6
++       RET
+diff --git a/unix/syscall_zos_s390x.go b/unix/syscall_zos_s390x.go
+index b473038..69f19e0 100644
+--- a/unix/syscall_zos_s390x.go
++++ b/unix/syscall_zos_s390x.go
+@@ -15,6 +15,9 @@ import (
+        "sync"
+        "syscall"
+        "unsafe"
++    "errors"
++    "os"
++    "path/filepath"
+ )
+
+ const (
+@@ -1976,3 +1979,104 @@ func direntNamlen(buf []byte) (uint64, bool) {
+        }
+        return reclen - uint64(unsafe.Offsetof(Dirent{}.Name)), true
+ }
++
++// -------------------------------
++// pointer validity test
++// good pointer returns 0
++// bad pointer returns 1
++//
++//go:nosplit
++func ptrtest(uintptr) uint64
++
++// -------------------------------
++// function descriptor pointer validity test
++// good pointer returns 0
++// bad pointer returns 1
++//
++//go:nosplit
++func funcptrtest(uintptr) uint64
++
++// Retrieve function name from descriptor
++func getLeFuncName(f uintptr) (string, error) {
++       // assume it has been checked, only check ppa1 validity here
++       entry := ((*[2]uintptr)(unsafe.Pointer(f)))[1]
++       preamp := ((*[4]uint32)(unsafe.Pointer(entry - 16)))
++       offsetPpa1 := preamp[2]
++       if offsetPpa1 > 0x0ffff {
++               return "", fmt.Errorf("PPA1 offset seems too big 0x%x\n", offsetPpa1)
++       }
++       ppa1 := uintptr(unsafe.Pointer(preamp)) + uintptr(offsetPpa1)
++       res := ptrtest(ppa1)
++       if res != 0 {
++               return "", fmt.Errorf("PPA1 address not valid")
++       }
++       size := *(*uint16)(unsafe.Pointer(ppa1 + 0x14))
++       if size > 128 {
++               return "", fmt.Errorf("Function name seems too long, length=%d\n", size)
++       }
++       var name [128]byte
++       funcname := (*[128]byte)(unsafe.Pointer(ppa1 + 0x16))
++       copy(name[0:size], funcname[0:size])
++       runtime.CallLeFuncByPtr(runtime.XplinkLibvec+0x6e3<<4, // __e2a_l
++               []uintptr{uintptr(unsafe.Pointer(&name[0])), uintptr(size)})
++       return string(name[:size]), nil
++}
++
++func Fchmodat(dirfd int, path string, mode uint32, flags int) (err error) {
++    // are we on a system with Fchmodat?
++    if funcptrtest(runtime.XplinkLibvec + syscall.SYS___FCHMODAT_A<<4) == 0 {
++        if name, err := getLeFuncName(runtime.XplinkLibvec + syscall.SYS___FCHMODAT_A<<4); err == nil && name == "fchmodat" {
++            var _p0 *byte
++            _p0, err = syscall.BytePtrFromString(path)
++               if err != nil {
++                   return err
++               }
++               r0, _, e1 := runtime.CallLeFuncWithErr(runtime.XplinkLibvec + syscall.SYS___FCHMODAT_A<<4, uintptr(dirfd), uintptr(unsafe.Pointer(_p0)), uintptr(mode), uintptr(flags))
++               if int64(r0) == -1 {
++                   err = errors.New(syscall.Errno(e1).Error())
++               }
++               return err
++        }
++    }
++
++    if mode&uint32(os.ModeSymlink) != 0 {
++        return nil
++    }
++
++    cwd, err := os.Getwd()
++    if err != nil {
++        return err
++    }
++    fpath := filepath.Join(cwd, path)
++    return syscall.Chmod(fpath, mode)
++}
++
++func Lutimes(path string, tv[]Timeval) (err error) {
++    if len(tv) != 2 {
++        return EINVAL
++    }
++
++    // are we running on a system with Lutimes?
++    if funcptrtest(runtime.XplinkLibvec + syscall.SYS___LUTIMES_A<<4) == 0 {
++        if name, err := getLeFuncName(runtime.XplinkLibvec + syscall.SYS___LUTIMES_A<<4); err == nil && name == "lutimes" {
++            var _p0 *byte
++            _p0, err = syscall.BytePtrFromString(path)
++            if err != nil {
++                return err
++            }
++            var _p1 unsafe.Pointer
++            if len(tv) > 0 {
++                _p1 = unsafe.Pointer(&tv[0])
++            } else {
++                _p1 = unsafe.Pointer(&_zero)
++            }
++            r0, _, e1 := runtime.CallLeFuncWithErr(runtime.XplinkLibvec + syscall.SYS___LUTIMES_A<<4, uintptr(unsafe.Pointer(_p0)), uintptr(_p1), uintptr(len(tv)))
++            if int64(r0) == -1 {
++                err = errors.New(syscall.Errno(e1).Error())
++            }
++            return err
++        }
++    }
++
++    return nil
++}
