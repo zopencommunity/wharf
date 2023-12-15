@@ -1,0 +1,51 @@
+From 93aeb46219aa7ca6c023c1e9c10c1d41f2495072 Mon Sep 17 00:00:00 2001
+From: v1gnesh <v1gnesh@users.noreply.github.com>
+Date: Tue, 12 Dec 2023 23:14:45 -0500
+Subject: [PATCH] Add zOS support 1.1.17
+
+---
+ ioctl.go     |  4 ++--
+ ioctl_zos.go | 19 +++++++++++++++++++
+ 2 files changed, 21 insertions(+), 2 deletions(-)
+ create mode 100644 ioctl_zos.go
+
+diff --git a/ioctl.go b/ioctl.go
+index 0676437..25f81d6 100644
+--- a/ioctl.go
++++ b/ioctl.go
+@@ -1,5 +1,5 @@
+-//go:build !windows && !solaris
+-//+build !windows,!solaris
++//go:build !windows && !solaris && !zos
++//+build !windows,!solaris,!zos
+ 
+ package pty
+ 
+diff --git a/ioctl_zos.go b/ioctl_zos.go
+new file mode 100644
+index 0000000..d25ab92
+--- /dev/null
++++ b/ioctl_zos.go
+@@ -0,0 +1,19 @@
++//go:build zos
++// +build zos
++
++package pty
++
++import "syscall"
++
++const (
++	TIOCGWINSZ = syscall.TIOCGWINSZ
++	TIOCSWINSZ = syscall.TIOCSWINSZ
++)
++
++func ioctl(fd, cmd, ptr uintptr) error {
++  err := syscall.Ioctl(int(fd), int(cmd), ptr)
++	if err != nil {
++		return err
++	}
++	return nil
++}
+-- 
+2.42.1
+
