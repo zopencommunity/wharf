@@ -167,7 +167,16 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 
 			// go-list errors mean the environment is bad -> stop loading for bad environments
 			if jpkg.Error != nil {
-				return nil, fmt.Errorf("unable to load %v: %v", jpkg.ImportPath, jpkg.Error.Err)
+				// if the package does not contain any go file can be build on the platform
+				if _BUILD_CONSTRAINS_EXCLUDE_ALL_FILE.MatchString(jpkg.Error.Err) {
+					// since the file will be ignore go list does not read any of the go file
+					// It can not find a package name. Need to find the package manually
+					if jpkg.Name == "" {
+							jpkg.Name = tags.FindPackageName(jpkg.Dir, jpkg.IgnoredGoFiles)
+					}
+				} else {
+					return nil, fmt.Errorf("unable to load %v: %v", jpkg.ImportPath, jpkg.Error.Err)
+				}
 			}
 
 			opts, err := getOpts(jpkg, cli)
