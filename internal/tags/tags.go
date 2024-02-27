@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"go/build/constraint"
 	"strings"
+	"regexp"
+	"os"
+	"path/filepath"
 )
 
 // All the unix-like platforms, listed in order of build priority
@@ -553,4 +556,23 @@ Lines:
 	}
 
 	return goBuild, nil
+}
+
+func FindPackageName(baseDir string, goFiles []string) string {
+	packageExp := regexp.MustCompile("\n*\\s*package\\s+([a-zA-Z_]+)\\s*")
+	testFileExp := regexp.MustCompile("^[a-zA-Z0-0_]_test.go$")
+	for _, file := range goFiles {
+		if testFileExp.MatchString(file) {
+			continue
+		}
+
+		content, err := os.ReadFile(filepath.Join(baseDir, file))
+		if err != nil {
+			continue
+		}
+		if res := packageExp.FindSubmatch(content); len(res) > 0 {
+			return string(res[1])
+		}
+	}
+	return ""
 }

@@ -115,7 +115,11 @@ func GoList(pkgs []string) (string, error) {
 // Run go list -find
 func GoListPkgDir(pkg string) (string, error) {
 	cmd := exec.Command("go", "list", "-f", "{{.Dir}}", "-find", "-mod=readonly", pkg)
-	return runout(cmd)
+	out, err := runout(cmd)
+	if err != nil {
+		return "", fmt.Errorf("%v\n %w", out, err)
+	} 
+	return out, err
 }
 
 func GoListModMain(mod string) error {

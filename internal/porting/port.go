@@ -270,7 +270,7 @@ func port(pkg *packages.Package, cfg *Config) error {
 			modcache[pkg.Module.Path] = mptc
 
 			uver, err := util.GoListModUpdate(mod.Path)
-			if err != nil {
+			if err != nil && !packages.IsExcludeGoListError(err.Error()){
 				return err
 			}
 
@@ -526,17 +526,21 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 				return err
 			}
 
-			if err := util.GoListModMain(pkg.Module.Path); err != nil {
+			err := util.GoListModMain(pkg.Module.Path)
+			if err != nil && !packages.IsExcludeGoListError(err.Error()) {
 				return err
 			}
-
 			pkg.Module.Main = true
 		}
 
 		// TODO: find a better way to get the package directory
 		dir, err := util.GoListPkgDir(pkg.ImportPath)
 		if err != nil {
-			return err
+			if packages.IsExcludeGoListError(err.Error()) {
+				dir = filepath.Join(cfg.ImportDir, pkg.Module.Path)
+			} else {
+				return err
+			}
 		}
 
 		dcfg := pkg.Configs[0]
@@ -650,6 +654,21 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 				} else if !current[gofile] {
 					// Add tags to files that were not in the default config
 					fmt.Printf("%v: added %v tag\n", gofile.Name, packages.Goos)
+
+					// the default config setting does not contain any files
+					// this means "build constraints exclude all Go files" (_BUILD_CONSTRAINS_EXCLUDE_ALL_FILE)
+					if len(dcfg.GoFiles) == 0 {
+						newName := fmt.Sprintf("%v_%v.go", strings.TrimSuffix(gofile.Name, ".go"), packages.Goos)
+						
+						if showActions {
+							fmt.Printf("%v: copied to %v\n", gofile.Name, newName)
+						}
+
+						err := util.CopyFile(filepath.Join(dir, newName), filepath.Join(dir, gofile.Name))
+						if err != nil {
+							return err
+						}
+					}
 
 					src, err := util.Format(gofile.Syntax, pkg.Fset)
 					if err != nil {
