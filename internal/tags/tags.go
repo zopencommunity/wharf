@@ -483,7 +483,7 @@ func findPlusBuild(content []byte) constraint.Expr {
 }
 
 func ParseFileHeader(content []byte) (constraint.Expr, error) {
-	tagLine, err := findGoBuild(content)
+	trimmedContent, tagLine, err := findGoBuild(content)
 	if err != nil {
 		return nil, err
 	}
@@ -493,10 +493,11 @@ func ParseFileHeader(content []byte) (constraint.Expr, error) {
 	}
 
 	// No go:build line, therefore by Go spec any +build lines are used
-	return findPlusBuild(content), nil
+	return findPlusBuild(trimmedContent), nil
 }
 
-func findGoBuild(content []byte) (goBuild []byte, err error) {
+func findGoBuild(content []byte) (trimmed [] byte, goBuild []byte, err error) {
+	end := 0
 	p := content
 	ended := false       // found non-blank, non-// line, so stopped accepting // +build lines
 	inSlashStar := false // in /* */ comment
@@ -519,6 +520,7 @@ Lines:
 			// Yes, that's confusing, which is part of why we moved to //go:build lines.)
 			// Note that ended==false here means that inSlashStar==false,
 			// since seeing a /* would have set ended==true.
+			end = len(content) - len(p)
 			continue Lines
 		}
 		if !bytes.HasPrefix(line, slashSlash) { // Not comment line
@@ -527,7 +529,7 @@ Lines:
 
 		if !inSlashStar && isGoBuildComment(line) {
 			if goBuild != nil {
-				return nil, errMultipleGoBuild
+				return nil, nil, errMultipleGoBuild
 			}
 			goBuild = line
 		}
@@ -555,7 +557,7 @@ Lines:
 		}
 	}
 
-	return goBuild, nil
+	return content[:end], goBuild, nil
 }
 
 func FindPackageName(baseDir string, goFiles []string) string {
