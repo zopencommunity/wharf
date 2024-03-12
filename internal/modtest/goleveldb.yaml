@@ -1,1 +1,4 @@
 module: github.com/syndtr/goleveldb
+
+# require ginkgo which is not support by wharf
+long: true

@@ -15,6 +15,10 @@ var Goos string
 var BuildTags map[string]bool
 var globalpkgs map[string]*Package = make(map[string]*Package, 50)
 
+func ClearGlobalpkgs() {
+	globalpkgs = make(map[string]*Package, 50)
+}
+
 type ProcGroup struct {
 	Packages []*Package
 

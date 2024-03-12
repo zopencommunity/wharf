@@ -43,10 +43,12 @@ var (
 // Config must not be nil
 func Port(paths []string, config *Config) (err error) {
 	if config == nil {
+		clearResource()
 		panic("config must not be nil")
 	}
 
 	if config.GoEnv == nil || len(config.GoEnv) == 0 {
+		clearResource()
 		panic("go environment not initialized")
 	}
 
@@ -63,6 +65,7 @@ func Port(paths []string, config *Config) (err error) {
 	// Set up build tags list
 	err = parseGoEnvTags(config.GoEnv, packages.BuildTags)
 	if err != nil {
+		clearResource()
 		return err
 	}
 
@@ -73,6 +76,7 @@ func Port(paths []string, config *Config) (err error) {
 	// Initialize the cache
 	err = setupCache(config.Cache)
 	if err != nil {
+		clearResource()
 		return err
 	}
 
@@ -124,10 +128,12 @@ teardown:
 	onCopyPass:
 	}
 
+	clearResource()
 	return err
 }
 
 func run(paths []string, cfg *Config) error {
+	errs := make([]error, 0, 1)		// holding group of error and check it before return nil
 	patchable := make([]*packages.Package, 0, 10)
 
 load:
@@ -167,6 +173,7 @@ load:
 			err := port(pkg, cfg)
 			if err != nil {
 				fmt.Printf("Package require manual porting: %v\n\t%v\n", pkg.ImportPath, err.Error())
+				errs = append(errs, err)
 				goto apply
 			}
 
@@ -201,7 +208,21 @@ apply:
 		}
 	}
 
+	// check if any error raise from above 
+	// but handled and reach this point
+	if len(errs) != 0 {
+		message := ""
+		for _, err := range errs {
+			message += err.Error() + "\n"
+		}
+		return fmt.Errorf(message)
+	}
 	return nil
+}
+
+
+func clearResource() {
+	packages.ClearGlobalpkgs()
 }
 
 // Run the build + port process on a package

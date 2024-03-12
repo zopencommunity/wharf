@@ -15,7 +15,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"strconv"
 	"testing"
+	"regexp"
+	"runtime"
 
 	"github.com/zosopentools/wharf/internal/util"
 	"golang.org/x/tools/go/vcs"
@@ -27,10 +30,16 @@ var configsDir embed.FS
 
 var longTests *bool
 
+var goVersionRegxp = regexp.MustCompile("go1.[0-9]+(.[0-9]+)?")
+
 type testConfig struct {
 	Module  string
 	Paths   []string
 	Version string
+
+	// required go version to run the test
+	// skip the test if current go version does not have the require go version
+	GoVersion string `yaml:"go_version"`
 
 	// Test needs more time to complete (also won't run under normal conditions)
 	Long bool
@@ -66,6 +75,35 @@ func TestModules(t *testing.T) {
 				t.Skip("disabled long tests")
 			}
 
+			if cfg.GoVersion != "" {
+				if !goVersionRegxp.MatchString(cfg.GoVersion) {
+					t.Fatal("incorrect go version formation: ", cfg.GoVersion)
+				}
+				currentVersionNums := strings.Split(cfg.GoVersion, ".")
+				runtimeVersionNums := strings.Split(runtime.Version(), ".")
+				//go1.21.2 will become ["go1", "21", "2"]
+				if len(currentVersionNums) >= 2 {
+					currentGoVersion, _ := strconv.Atoi(currentVersionNums[1])
+					runtimeGoVersion, _ := strconv.Atoi(runtimeVersionNums[1])
+					if runtimeGoVersion < currentGoVersion {
+						t.Skip("test require ", cfg.GoVersion, " current go version is ", runtime.Version())
+					}
+
+					if currentGoVersion == runtimeGoVersion && 
+					len(currentVersionNums) > 2 && len(runtimeVersionNums) > 2 {
+						currentGoVersion, _ = strconv.Atoi(currentVersionNums[2])
+						runtimeGoVersion, _ = strconv.Atoi(runtimeVersionNums[2])
+						if runtimeGoVersion < currentGoVersion {
+							t.Skip("test require ", cfg.GoVersion, " current go version is ", runtime.Version())
+						}
+					}
+				}
+			}
+
+			if cfg.Paths == nil {
+				cfg.Paths = []string{cfg.Module}
+			}
+
 			repo, err := vcs.RepoRootForImportPath(cfg.Module, false)
 			if err != nil {
 				t.Fatalf("cannot resolve repo: %v", err)
@@ -73,19 +111,21 @@ func TestModules(t *testing.T) {
 
 			if cfg.Version != "" {
 				t.Run(cfg.Version, func(t *testing.T) {
-					run(repo, cfg.Module, cfg.Paths, cfg.Version, t)
+					run(repo, cfg.Module, cfg.Paths, cfg.Version, !cfg.Fails, t)
 				})
 			}
 
 			t.Run("latest", func(t *testing.T) {
-				run(repo, cfg.Module, cfg.Paths, "", t)
+				run(repo, cfg.Module, cfg.Paths, "", !cfg.Fails, t)
 			})
 		})
 	}
 }
 
-func run(repo *vcs.RepoRoot, module string, paths []string, version string, t *testing.T) {
-	dir := t.TempDir()
+func run(repo *vcs.RepoRoot, module string, paths []string, version string, expectSuccess bool, t *testing.T) {
+	// dir := t.TempDir()
+	lastIndex := strings.LastIndex(module, "/")
+	dir, _ := os.MkdirTemp("", module[lastIndex + 1:])
 
 	targetDir := filepath.Join(dir, "target")
 
@@ -147,8 +187,15 @@ func run(repo *vcs.RepoRoot, module string, paths []string, version string, t *t
 	}()
 
 	// TODO: set up a test build for this that runs in a child executable
-	if err := main1(paths, []string{}, false, false, false, filepath.Join(dir, "wharf_port"), goenv); err != nil {
-		t.Fatal(err)
+	err = main1(paths, []string{}, false, false, false, filepath.Join(dir, "wharf_port"), goenv)
+	if err != nil {
+		if expectSuccess {
+			t.Fatal(err)
+		}
+	} else {
+		if !expectSuccess {
+			t.Fatal("Expecting an error but did not receive one")
+		}
 	}
 }
 

@@ -1,1 +1,4 @@
 module: go.etcd.io/bbolt
+go_version: go1.22.1
+# unix.Mmap is not support in z/OS sys/unix
+fails: true
