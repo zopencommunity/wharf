@@ -1,1 +1,3 @@
-module: github.com/github/hub
+module: github.com/github/hub/v2
+
+fails: true

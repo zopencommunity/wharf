@@ -1,1 +1,6 @@
-module: github.com/go-gitea/gitea
+module: code.gitea.io/gitea
+
+# using bbolt which use unix.Mmap 
+# unix.Mmap is not support in z/OS sys/unix
+# using goleveldb and currently not supporting goleveldb
+fails: true

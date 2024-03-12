@@ -1,1 +1,5 @@
 module: github.com/elastic/go-txfile
+
+# using unix.Mmap 
+# unix.Mmap is not support in z/OS sys/unix
+fails: true
