@@ -245,6 +245,10 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 							fileImports[name] = ipath
 						}
 
+						if globalName2IName[name] == "" {
+							globalName2IName[name] = ipath
+						}
+
 					},
 				)
 				if err != nil {

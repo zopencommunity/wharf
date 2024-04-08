@@ -223,6 +223,7 @@ apply:
 
 func clearResource() {
 	packages.ClearGlobalpkgs()
+	packages.ClearGlobalName2IName()
 }
 
 // Run the build + port process on a package
@@ -242,7 +243,11 @@ func port(pkg *packages.Package, cfg *Config) error {
 		pkg.Build(nil, func(err packages.TypeError) {
 			if iname, ok := err.Reason.(packages.TCBadImportName); ok {
 				fname := err.Err.Fset.Position(err.Err.Pos).Filename
-				imports[pkg.FileImports[fname][iname.PkgName]] = true
+				if pkg.FileImports[fname][iname.PkgName] != "" {
+					imports[pkg.FileImports[fname][iname.PkgName]] = true
+				} else {
+					imports[packages.PkgName2ImportName(iname.PkgName)] = true
+				}
 			} else if _, ok := err.Reason.(packages.TCBadName); ok {
 				needTag = true
 			} else {
@@ -342,7 +347,11 @@ func port(pkg *packages.Package, cfg *Config) error {
 
 			if iname, ok := err2.Reason.(packages.TCBadImportName); ok && imports != nil {
 				fname := err2.Err.Fset.Position(err2.Err.Pos).Filename
-				imports[pkg.FileImports[fname][iname.PkgName]] = true
+				if pkg.FileImports[fname][iname.PkgName] != "" {
+					imports[pkg.FileImports[fname][iname.PkgName]] = true
+				} else {
+					imports[packages.PkgName2ImportName(iname.PkgName)] = true
+				}
 				return true
 			}
 
@@ -373,7 +382,11 @@ func port(pkg *packages.Package, cfg *Config) error {
 		pkg.Build(nil, func(err packages.TypeError) {
 			if iname, ok := err.Reason.(packages.TCBadImportName); ok {
 				fname := err.Err.Fset.Position(err.Err.Pos).Filename
-				imports[pkg.FileImports[fname][iname.PkgName]] = true
+				if pkg.FileImports[fname][iname.PkgName] != "" {
+					imports[pkg.FileImports[fname][iname.PkgName]] = true
+				} else {
+					imports[packages.PkgName2ImportName(iname.PkgName)] = true
+				}
 			} else {
 				panic("unsanitized config used for doing porting of depenendencies")
 			}
@@ -395,9 +408,12 @@ func port(pkg *packages.Package, cfg *Config) error {
 
 	// Keep track if any imports are portable
 	canPortImports := false
-
 	for path := range imports {
 		ipkg := pkg.Imports[path]
+		if ipkg == nil {
+			ipkg = packages.GetGlobalPkg(path)
+		}
+
 		initProcFlags(ipkg)
 
 		if ipkg.ExtFlags < stateExhausted {

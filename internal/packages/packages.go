@@ -14,9 +14,22 @@ import (
 var Goos string
 var BuildTags map[string]bool
 var globalpkgs map[string]*Package = make(map[string]*Package, 50)
+var globalName2IName map[string]string = make(map[string]string, 10)
+
+func GetGlobalPkg(importName string) *Package {
+	return globalpkgs[importName]
+}
+
+func PkgName2ImportName(pkgName string) string {
+	return globalName2IName[pkgName]
+}
 
 func ClearGlobalpkgs() {
-	globalpkgs = make(map[string]*Package, 50)
+	globalpkgs = make(map[string]*Package, 0)
+}
+
+func ClearGlobalName2IName() {
+	globalName2IName = make(map[string]string, 0)
 }
 
 type ProcGroup struct {
