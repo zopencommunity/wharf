@@ -19,7 +19,7 @@ This program can:
 ### Go Install
 
 ```
-go install github.com/zosopentools/wharf
+go install github.com/zosopentools/wharf@latest
 ```
 
 ### From source
