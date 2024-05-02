@@ -222,8 +222,7 @@ apply:
 
 
 func clearResource() {
-	packages.ClearGlobalpkgs()
-	packages.ClearGlobalName2IName()
+	packages.ClearAll()
 }
 
 // Run the build + port process on a package
@@ -379,6 +378,10 @@ func port(pkg *packages.Package, cfg *Config) error {
 
 	// If we have have come back here after doing a run through the dependencies we should recheck the build
 	if pkg.ExtFlags == statePortingDependencies {
+		// Issue38 https://github.com/ZOSOpenTools/wharf/issues/38
+		// reload AST tree for type checking 
+		fixGlobalType()		
+
 		pkg.Build(nil, func(err packages.TypeError) {
 			if iname, ok := err.Reason.(packages.TCBadImportName); ok {
 				fname := err.Err.Fset.Position(err.Err.Pos).Filename
@@ -827,6 +830,51 @@ func typeCheck(pkg *packages.Package, filter func(packages.TypeError) bool) bool
 	}
 
 	return passed
+}
+
+// The function traverses the package import graph, 
+// constructed during the load stage, and builds AST 
+// using types.Check(). The information from the 
+// 'import xxxPackage' statement is stored in the AST 
+// with a pointer to the imported package's AST. 
+// However, during the porting stage, new ASTs are constructed, 
+// and some of the package's ASTs still point to the old AST.
+
+// The goal is to reconstruct the AST (types.Package) 
+// for each package, ensuring that each AST contains 
+// the most up-to-date information of the imported AST.
+func fixGlobalType() {
+	allTypes := make(map[string]*types.Package)
+	getImporter := func(pkg *packages.Package) packages.Importer {
+		importer := packages.Importer(func(path string) (*types.Package, error) {
+			if pt, ok := allTypes[path]; ok && pt != nil {
+				return pt, nil
+			}
+			ipkg := packages.GetGlobalPkg(path)
+			if ipkg == nil {
+				mPath := packages.GetPathFromImportMap(pkg.ImportPath, path)
+				ipkg = packages.GetGlobalPkg(mPath)
+			}
+			if ipkg == nil || ipkg.Types == nil{
+				return nil, fmt.Errorf("Can not found import package: %s", path)
+			}
+			return ipkg.Types, nil
+		})
+		return importer
+    }
+	handleErr := func(err packages.TypeError) {}  // empty error handler 
+
+	layers := packages.PackageImportGraph
+	for _, layer := range layers {
+		for _, pkg := range layer.Packages {
+			pkg = packages.GetGlobalPkg(pkg.ImportPath)
+			pkg.LoadSyntax()
+			typed, _ := pkg.Build(getImporter(pkg), handleErr)
+			pkg.Types = typed
+			allTypes[pkg.ImportPath] = typed
+		}
+	}
+
 }
 
 // Package is an golang.org/x/... package
