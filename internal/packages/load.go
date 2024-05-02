@@ -200,6 +200,10 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 					pkg.FileImports = nil
 				}
 
+				if len(jpkg.ImportMap) > 0 {
+                    globalImportMap[jpkg.ImportPath] = jpkg.ImportMap
+                }
+
 				impMask := make(map[string]bool, len(jpkg.Imports))
 				found := 0 // For sanity check
 
@@ -390,6 +394,7 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 
 		pkg.color = searched
 
+		PackageImportGraph = layers
 		return level, nil
 	}
 
