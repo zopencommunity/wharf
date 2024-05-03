@@ -123,9 +123,9 @@ func TestModules(t *testing.T) {
 }
 
 func run(repo *vcs.RepoRoot, module string, paths []string, version string, expectSuccess bool, t *testing.T) {
-	// dir := t.TempDir()
 	lastIndex := strings.LastIndex(module, "/")
 	dir, _ := os.MkdirTemp("", module[lastIndex + 1:])
+	defer cleanup(dir)
 
 	targetDir := filepath.Join(dir, "target")
 
