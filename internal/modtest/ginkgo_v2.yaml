@@ -1,5 +1,2 @@
 module: github.com/onsi/ginkgo/v2
 
-# Unknow Failure 
-# TODO: investigate the failure https://github.com/ZOSOpenTools/wharf/issues/38
-long: true
