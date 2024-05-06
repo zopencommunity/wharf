@@ -118,7 +118,7 @@ func GoListPkgDir(pkg string) (string, error) {
 	out, err := runout(cmd)
 	if err != nil {
 		return "", fmt.Errorf("%v\n %w", out, err)
-	} 
+	}
 	return out, err
 }
 

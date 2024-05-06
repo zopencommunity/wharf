@@ -59,8 +59,8 @@ func (pkg *Package) Build(importer Importer, handleErr func(err TypeError)) (*ty
 		FakeImportC: true,
 	}
 
-	if pkg.CfgIdx >= len(pkg.Configs){
-			pkg.CfgIdx = 0
+	if pkg.CfgIdx >= len(pkg.Configs) {
+		pkg.CfgIdx = 0
 	}
 	ptype, _ := tcfg.Check(pkg.ImportPath, pkg.Fset, pkg.Configs[pkg.CfgIdx].Syntax, nil)
 	return ptype, errs

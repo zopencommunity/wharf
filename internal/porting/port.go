@@ -133,7 +133,7 @@ teardown:
 }
 
 func run(paths []string, cfg *Config) error {
-	errs := make([]error, 0, 1)		// holding group of error and check it before return nil
+	errs := make([]error, 0, 1) // holding group of error and check it before return nil
 	patchable := make([]*packages.Package, 0, 10)
 
 load:
@@ -208,7 +208,7 @@ apply:
 		}
 	}
 
-	// check if any error raise from above 
+	// check if any error raise from above
 	// but handled and reach this point
 	if len(errs) != 0 {
 		message := ""
@@ -219,7 +219,6 @@ apply:
 	}
 	return nil
 }
-
 
 func clearResource() {
 	packages.ClearAll()
@@ -295,7 +294,7 @@ func port(pkg *packages.Package, cfg *Config) error {
 			modcache[pkg.Module.Path] = mptc
 
 			uver, err := util.GoListModUpdate(mod.Path)
-			if err != nil && !packages.IsExcludeGoListError(err.Error()){
+			if err != nil && !packages.IsExcludeGoListError(err.Error()) {
 				return err
 			}
 
@@ -379,8 +378,8 @@ func port(pkg *packages.Package, cfg *Config) error {
 	// If we have have come back here after doing a run through the dependencies we should recheck the build
 	if pkg.ExtFlags == statePortingDependencies {
 		// Issue38 https://github.com/ZOSOpenTools/wharf/issues/38
-		// reload AST tree for type checking 
-		fixGlobalType()		
+		// reload AST tree for type checking
+		fixGlobalType()
 
 		pkg.Build(nil, func(err packages.TypeError) {
 			if iname, ok := err.Reason.(packages.TCBadImportName); ok {
@@ -548,7 +547,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 					path,
 					pkg.Module.Path,
 					strings.TrimSuffix(pkg.Module.Version, "+incompatible"),
-					); err != nil {
+				); err != nil {
 					return err
 				}
 			} else {
@@ -699,7 +698,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 					// this means "build constraints exclude all Go files" (_BUILD_CONSTRAINS_EXCLUDE_ALL_FILE)
 					if len(dcfg.GoFiles) == 0 {
 						newName := fmt.Sprintf("%v_%v.go", strings.TrimSuffix(gofile.Name, ".go"), packages.Goos)
-						
+
 						if showActions {
 							fmt.Printf("%v: copied to %v\n", gofile.Name, newName)
 						}
@@ -832,16 +831,16 @@ func typeCheck(pkg *packages.Package, filter func(packages.TypeError) bool) bool
 	return passed
 }
 
-// The function traverses the package import graph, 
-// constructed during the load stage, and builds AST 
-// using types.Check(). The information from the 
-// 'import xxxPackage' statement is stored in the AST 
-// with a pointer to the imported package's AST. 
-// However, during the porting stage, new ASTs are constructed, 
+// The function traverses the package import graph,
+// constructed during the load stage, and builds AST
+// using types.Check(). The information from the
+// 'import xxxPackage' statement is stored in the AST
+// with a pointer to the imported package's AST.
+// However, during the porting stage, new ASTs are constructed,
 // and some of the package's ASTs still point to the old AST.
 
-// The goal is to reconstruct the AST (types.Package) 
-// for each package, ensuring that each AST contains 
+// The goal is to reconstruct the AST (types.Package)
+// for each package, ensuring that each AST contains
 // the most up-to-date information of the imported AST.
 func fixGlobalType() {
 	allTypes := make(map[string]*types.Package)
@@ -855,14 +854,14 @@ func fixGlobalType() {
 				mPath := packages.GetPathFromImportMap(pkg.ImportPath, path)
 				ipkg = packages.GetGlobalPkg(mPath)
 			}
-			if ipkg == nil || ipkg.Types == nil{
+			if ipkg == nil || ipkg.Types == nil {
 				return nil, fmt.Errorf("Can not found import package: %s", path)
 			}
 			return ipkg.Types, nil
 		})
 		return importer
-    }
-	handleErr := func(err packages.TypeError) {}  // empty error handler 
+	}
+	handleErr := func(err packages.TypeError) {} // empty error handler
 
 	layers := packages.PackageImportGraph
 	for _, layer := range layers {
