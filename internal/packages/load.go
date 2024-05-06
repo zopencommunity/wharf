@@ -172,7 +172,7 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 					// since the file will be ignore go list does not read any of the go file
 					// It can not find a package name. Need to find the package manually
 					if jpkg.Name == "" {
-							jpkg.Name = tags.FindPackageName(jpkg.Dir, jpkg.IgnoredGoFiles)
+						jpkg.Name = tags.FindPackageName(jpkg.Dir, jpkg.IgnoredGoFiles)
 					}
 				} else {
 					return nil, fmt.Errorf("unable to load %v: %v", jpkg.ImportPath, jpkg.Error.Err)
@@ -201,8 +201,8 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 				}
 
 				if len(jpkg.ImportMap) > 0 {
-                    globalImportMap[jpkg.ImportPath] = jpkg.ImportMap
-                }
+					globalImportMap[jpkg.ImportPath] = jpkg.ImportMap
+				}
 
 				impMask := make(map[string]bool, len(jpkg.Imports))
 				found := 0 // For sanity check

@@ -14,11 +14,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
-	"strconv"
-	"testing"
 	"regexp"
 	"runtime"
+	"strconv"
+	"strings"
+	"testing"
 
 	"github.com/zosopentools/wharf/internal/util"
 	"golang.org/x/tools/go/vcs"
@@ -89,8 +89,8 @@ func TestModules(t *testing.T) {
 						t.Skip("test require ", cfg.GoVersion, " current go version is ", runtime.Version())
 					}
 
-					if currentGoVersion == runtimeGoVersion && 
-					len(currentVersionNums) > 2 && len(runtimeVersionNums) > 2 {
+					if currentGoVersion == runtimeGoVersion &&
+						len(currentVersionNums) > 2 && len(runtimeVersionNums) > 2 {
 						currentGoVersion, _ = strconv.Atoi(currentVersionNums[2])
 						runtimeGoVersion, _ = strconv.Atoi(runtimeVersionNums[2])
 						if runtimeGoVersion < currentGoVersion {
@@ -124,7 +124,7 @@ func TestModules(t *testing.T) {
 
 func run(repo *vcs.RepoRoot, module string, paths []string, version string, expectSuccess bool, t *testing.T) {
 	lastIndex := strings.LastIndex(module, "/")
-	dir, _ := os.MkdirTemp("", module[lastIndex + 1:])
+	dir, _ := os.MkdirTemp("", module[lastIndex+1:])
 	defer cleanup(dir)
 
 	targetDir := filepath.Join(dir, "target")

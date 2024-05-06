@@ -36,16 +36,16 @@ func ClearGlobalName2IName() {
 }
 
 func ClearAll() {
-        ClearGlobalpkgs()
-        ClearGlobalName2IName()
-        PackageImportGraph = PackageImportGraph[:]
+	ClearGlobalpkgs()
+	ClearGlobalName2IName()
+	PackageImportGraph = PackageImportGraph[:]
 }
 
 func GetPathFromImportMap(pkgImportPath string, depsPath string) string {
-       if importMap, ok := globalImportMap[pkgImportPath]; ok {
-               return importMap[depsPath]
-       }
-       return ""
+	if importMap, ok := globalImportMap[pkgImportPath]; ok {
+		return importMap[depsPath]
+	}
+	return ""
 }
 
 type ProcGroup struct {

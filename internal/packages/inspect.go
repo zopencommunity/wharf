@@ -58,8 +58,7 @@ var (
 	_NOT_DECLARED_BY_PACKAGE_ERR_MATCHER = regexp.MustCompile(`(\w+) not declared by package (\w+)`)
 	// EBADF not declared by package syscall
 
-
-	// exclude the below error 
+	// exclude the below error
 	_BUILD_CONSTRAINS_EXCLUDE_ALL_FILE = regexp.MustCompile(`build constraints exclude all Go files in ([a-zA-Z0-9_/@.]+)`)
 )
 

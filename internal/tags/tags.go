@@ -9,10 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"go/build/constraint"
-	"strings"
-	"regexp"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 // All the unix-like platforms, listed in order of build priority
@@ -496,7 +496,7 @@ func ParseFileHeader(content []byte) (constraint.Expr, error) {
 	return findPlusBuild(trimmedContent), nil
 }
 
-func findGoBuild(content []byte) (trimmed [] byte, goBuild []byte, err error) {
+func findGoBuild(content []byte) (trimmed []byte, goBuild []byte, err error) {
 	end := 0
 	p := content
 	ended := false       // found non-blank, non-// line, so stopped accepting // +build lines
