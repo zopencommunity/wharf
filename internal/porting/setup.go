@@ -48,6 +48,10 @@ type Config struct {
 	// Explicitly defined handlers for packages
 	//
 	Directives map[string]*direct.PackageDirective
+
+	// Other options
+	//
+	Options map[string]any
 }
 
 // Add build tags that are parsed from 'go env' fields

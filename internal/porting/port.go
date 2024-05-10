@@ -512,6 +512,8 @@ func port(pkg *packages.Package, cfg *Config) error {
 
 func apply(pkgs []*packages.Package, cfg *Config) error {
 	showActions := cfg.Verbose || cfg.DryRun
+	makeDiff := !cfg.DryRun && cfg.Options["CREATE-PATCH-FILES"] != nil
+	diffs := make(map[string]bool)
 
 	for path, ptc := range modcache {
 		fmt.Printf("%v %v ", path, ptc.version)
@@ -530,6 +532,9 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 
 	for _, pkg := range pkgs {
 		fmt.Println("#", pkg.ImportPath)
+		if makeDiff {
+			diffs[pkg.Module.Dir] = true
+		}
 		// Quick fix because we would lose the syntax on import change
 		if err := pkg.LoadSyntax(); err != nil {
 			return err
@@ -752,6 +757,17 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 				if err != nil {
 					return err
 				}
+			}
+		}
+	}
+
+	if makeDiff && len(diffs) > 0 {
+		outdir, _ := filepath.Abs(cfg.GoEnv["GOWORK"])
+		outdir = filepath.Dir(outdir)
+		for path, _ := range diffs {
+			out := filepath.Join(outdir, filepath.Base(path)+".patch")
+			if err := util.GitDiff(path, out); err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to produce patch file for repo located at %v: %v", path, err.Error())
 			}
 		}
 	}

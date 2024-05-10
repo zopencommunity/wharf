@@ -21,6 +21,7 @@ import (
 var version = "v1.1.0"
 
 func main() {
+	opts := make(map[string]any)
 	// Parse cmd line flags
 	helpFlag := flag.Bool("help", false, "Print help text")
 	tagsFlag := flag.String("tags", "", "List of build tags")
@@ -29,6 +30,7 @@ func main() {
 	testFlag := flag.Bool("t", false, "Test the package after the porting stage")
 	vcsFlag := flag.Bool("q", false, "Clone the package from VCS")
 	configFlag := flag.String("config", "", "Config for additional code edits")
+	patchesFlag := flag.Bool("p", false, "Saves patch files to filesystem path")
 	iDirFlag := flag.String("d", "", "Path to store imported modules")
 	forceFlag := flag.Bool("f", false, "Force operation even if imported module path exists")
 	versionFlag := flag.Bool("version", false, "Display version information")
@@ -112,11 +114,18 @@ func main() {
 		direct.Apply(cfg)
 	}
 
+	if *patchesFlag {
+		if !*vcsFlag {
+			log.Fatal("Cannot use -p flag without enabling vcs cloning")
+		}
+		opts["CREATE-PATCH-FILES"] = true
+	}
+
 	tags := strings.Split(*tagsFlag, ",")
 
 	paths := flag.Args()
 
-	if err := main1(paths, tags, *verboseFlag, *dryRunFlag, *vcsFlag, importDir, goenv); err != nil {
+	if err := main1(paths, tags, *verboseFlag, *dryRunFlag, *vcsFlag, importDir, goenv, opts); err != nil {
 		fmt.Println(err.Error())
 		fmt.Println("Porting failed due to errors mentioned above")
 	} else {
@@ -142,6 +151,7 @@ func main1(
 	useVCS bool,
 	importDir string,
 	goenv map[string]string,
+	opts map[string]any,
 ) error {
 
 	return porting.Port(paths, &porting.Config{
@@ -152,5 +162,6 @@ func main1(
 		Verbose:    verbose,
 		DryRun:     dryRun,
 		UseVCS:     useVCS,
+		Options:    opts,
 	})
 }
