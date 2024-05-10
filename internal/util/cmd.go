@@ -31,6 +31,12 @@ func GitClone(repo string, dest string) error {
 	return run(cmd)
 }
 
+func GitDiff(target string, output string) error {
+	cmd := exec.Command("git", "diff", "--output="+output)
+	cmd.Dir = target
+	return run(cmd)
+}
+
 // Run go env and return all it's contents
 func GoEnv() (map[string]string, error) {
 	cmd := exec.Command("go", "env", "-json")
