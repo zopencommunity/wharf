@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/mattn/go-isatty"
@@ -18,7 +19,18 @@ import (
 	"github.com/zosopentools/wharf/internal/util"
 )
 
-var version = "v1.1.0"
+const shaLen = 7
+
+var (
+	// Version contains the application version number. It's set via ldflags
+	// when building. (-ldflags="-X 'main.Version=${WHARF_VERSION}'")
+	Version = ""
+
+	// CommitSHA contains the SHA of the commit that this application was built
+	// against. It's set via ldflags when building.
+	// (-ldflags="-X 'main.CommitSHA=$(git rev-parse HEAD)'")
+	CommitSHA = ""
+)
 
 func main() {
 	opts := make(map[string]any)
@@ -46,7 +58,19 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Println(version)
+		if Version == "" {
+			if info, ok := debug.ReadBuildInfo(); ok && info.Main.Sum != "" {
+				Version = info.Main.Version
+			} else {
+				Version = "unknown (built from source)"
+			}
+		}
+
+		if len(CommitSHA) >= shaLen {
+			Version += " (" + CommitSHA[:shaLen] + ")"
+		}
+
+		fmt.Println(Version)
 		os.Exit(0)
 	}
 
