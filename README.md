@@ -29,6 +29,14 @@ git clone git@github.com:zosopentools/wharf && cd wharf
 go install
 ```
 
+##### Note: Embedding Version Number
+
+Use the following build command to embed a version number into the executable. Using `--version` will return: `unknown (built from source)` otherwise.
+```
+go install -ldflags="-X 'main.Version=v9.9.9'"
+```
+_Where "v9.9.9" is the appropriate version tag_
+
 ## Usage
 
 Run it similarly to `go build`.
