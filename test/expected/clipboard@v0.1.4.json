@@ -1,0 +1,24 @@
+{
+    "modules": [],
+    "packages": [
+        {
+            "Path": "github.com/atotto/clipboard",
+            "Module": "github.com/atotto/clipboard",
+            "Dir": "/home/macmala/tmp/TestModulesgithub.comatottoclipboardv0.1.41135874869/001/clipboard",
+            "Tags": [
+                "linux",
+                "openbsd",
+                "freebsd",
+                "netbsd",
+                "solaris",
+                "dragonfly"
+            ],
+            "Files": [
+                {
+                    "Name": "clipboard_unix.go",
+                    "Build": true
+                }
+            ]
+        }
+    ]
+}

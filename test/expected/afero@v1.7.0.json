@@ -1,0 +1,27 @@
+{
+    "modules": [],
+    "packages": [
+        {
+            "Path": "github.com/spf13/afero",
+            "Module": "github.com/spf13/afero",
+            "Tags": [
+                "openbsd",
+                "freebsd",
+                "netbsd",
+                "darwin",
+                "dragonfly",
+                "aix"
+            ],
+            "Files": [
+                {
+                    "Name": "const_bsds.go",
+                    "Build": true
+                },
+                {
+                    "Name": "const_win_unix.go",
+                    "Build": false
+                }
+            ]
+        }
+    ]
+}
