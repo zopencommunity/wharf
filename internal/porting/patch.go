@@ -17,8 +17,10 @@ import (
 )
 
 type modulepatch struct {
-	version string
-	action  uint
+	original string
+	version  string
+	dir      string
+	action   uint
 }
 
 const (
