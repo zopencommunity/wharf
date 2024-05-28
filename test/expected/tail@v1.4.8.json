@@ -1,0 +1,11 @@
+{
+    "modules": [
+        {
+            "Path": "github.com/fsnotify/fsnotify",
+            "Version": "v1.4.9",
+            "Fixed": "v1.7.0",
+            "Imported": false
+        }
+    ],
+    "packages": []
+}

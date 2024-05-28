@@ -1,0 +1,11 @@
+{
+    "modules": [
+        {
+            "Path": "golang.org/x/sys",
+            "Version": "v0.0.0-20200923182605-d9f96fdee20d",
+            "Fixed": "v0.20.0",
+            "Imported": false
+        }
+    ],
+    "packages": []
+}

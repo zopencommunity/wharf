@@ -1,0 +1,39 @@
+{
+    "modules": [
+        {
+            "Path": "golang.org/x/sys",
+            "Version": "v0.0.0-20191026070338-33540a1f6037",
+            "Fixed": "v0.20.0",
+            "Imported": false
+        }
+    ],
+    "packages": [
+        {
+            "Path": "github.com/cheggaaa/pb",
+            "Module": "github.com/cheggaaa/pb",
+            "Tags": [
+                "linux",
+                "solaris",
+                "aix"
+            ],
+            "Files": [
+                {
+                    "Name": "pb_x.go",
+                    "Build": true
+                },
+                {
+                    "Name": "pool.go",
+                    "Build": true
+                },
+                {
+                    "Name": "pool_x.go",
+                    "Build": true
+                },
+                {
+                    "Name": "termios_sysv.go",
+                    "Build": true
+                }
+            ]
+        }
+    ]
+}

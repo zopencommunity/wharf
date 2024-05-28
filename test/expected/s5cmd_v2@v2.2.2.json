@@ -1,0 +1,64 @@
+{
+    "modules": [
+        {
+            "Path": "github.com/cheggaaa/pb/v3",
+            "Version": "v3.1.4",
+            "Fixed": "v3.1.4",
+            "Imported": true
+        },
+        {
+            "Path": "github.com/karrick/godirwalk",
+            "Version": "v1.15.3",
+            "Fixed": "v1.15.3",
+            "Imported": true
+        }
+    ],
+    "packages": [
+        {
+            "Path": "github.com/karrick/godirwalk",
+            "Module": "github.com/karrick/godirwalk",
+            "Tags": [
+                "linux"
+            ],
+            "Files": [
+                {
+                    "Name": "inoWithIno.go",
+                    "Build": true
+                },
+                {
+                    "Name": "modeTypeWithType.go",
+                    "Build": true
+                },
+                {
+                    "Name": "nameWithoutNamlen.go",
+                    "Build": true
+                },
+                {
+                    "Name": "reclenFromReclen.go",
+                    "Build": true
+                }
+            ]
+        },
+        {
+            "Path": "github.com/cheggaaa/pb/v3/termutil",
+            "Module": "github.com/cheggaaa/pb/v3",
+            "Tags": [
+                "linux"
+            ],
+            "Files": [
+                {
+                    "Name": "term_linux.go",
+                    "Build": true
+                },
+                {
+                    "Name": "term_nix.go",
+                    "Build": true
+                },
+                {
+                    "Name": "term_x.go",
+                    "Build": true
+                }
+            ]
+        }
+    ]
+}

@@ -2,52 +2,91 @@ github.com/spf13/afero:
   tests:
     - version: v1.7.0
 go.etcd.io/bbolt:
-github.com/google/certificate-transparency-go/x509:
+  tests:
+    - version: v1.3.6
 github.com/atotto/clipboard:
   tests:
     - version: v0.1.4
-github.com/docker/docker:
-  default:
-    - github.com/docker/docker/client
-  long: true
+# github.com/docker/docker:
+#   default:
+#     - github.com/docker/docker/client
+#   long: true
+#   tests:
+#     - version: v20.10.9
 go.etcd.io/etcd/v3:
   tests:
     - version: v3.4.20
-github.com/elastic/beats/v7:
-  default:
-    - github.com/elastic/beats/v7/filebeat
+github.com/peak/s5cmd/v2:
   tests:
-    - version: v8.3.3
-  long: true
-github.com/fsnotify/fsnotify:
+    - version: v2.2.2
 github.com/antonmedv/fx:
-github.com/gin-gonic/gin:
+  tests:
+    - version: 34.0.0
 github.com/onsi/ginkgo/v2:
+  tests:
+    - version: v2.1.4
 code.gitea.io/gitea:
   tests:
     - version: v1.17.0
   long: true
-github.com/github/hub/v2:
+github.com/github/hub:
+  tests:
+    - version: v2.14.2
 github.com/go-git/go-git/v5:
-github.com/mattn/go-isatty:
-github.com/elastic/go-txfile:
+  tests:
+    - version: v5.4.2
 github.com/syndtr/goleveldb:
   default:
     - github.com/syndtr/goleveldb/leveldb
-google.golang.org/grpc:
-github.com/elastic/mmap-go:
-  long: true
-github.com/subgraph/paxrat:
+  tests:
+    - version: v1.0.0
 github.com/cheggaaa/pb:
-github.com/lib/pq:
-  module: github.com/prometheus/prometheus
+  tests:
+  - version: v3.0.8
+github.com/prometheus/prometheus:
   tests:
   - version: v2.37.6
     paths:
       - github.com/prometheus/prometheus/cmd/...
   long: true
-github.com/unrolled/render:
 github.com/bgentry/speakeasy:
+  tests:
+  - version: v0.1.0
 github.com/nxadm/tail:
-github.com/HouzuoGuo/tiedot:
-github.com/olekukonko/ts:
+  tests:
+  - version: v1.4.8
+github.com/charmbracelet/gum:
+  tests:
+  - version: v0.14.1
+
+# Below are packages/modules that still need to get test data generated for
+# github.com/HouzuoGuo/tiedot:
+# github.com/olekukonko/ts:
+# github.com/google/certificate-transparency-go/x509:
+# github.com/subgraph/paxrat:
+# github.com/unrolled/render:
+# google.golang.org/grpc:
+# github.com/elastic/go-txfile:
+# github.com/mattn/go-isatty:
+# github.com/gin-gonic/gin:
+# github.com/fsnotify/fsnotify:
+# github.com/elastic/mmap-go:
+# github.com/lib/pq:
+# github.com/u-root/u-root
+
+# Below are packages/modules that we are aware that Wharf doesn't currently port properly
+
+# github.com/elastic/beats/v7:
+#   default:
+#     - github.com/elastic/beats/v7/filebeat
+#   tests:
+#     - version: v8.3.3
+#   long: true
+
+# github.com/gdamore/tcell:
+#   tests:
+#   - version: v1.3.0
+
+# github.com/WireGuard/wireguard-go:
+  tests:
+  - version: 0.0.20230223
