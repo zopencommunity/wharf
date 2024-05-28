@@ -2,19 +2,19 @@
     "modules": [],
     "packages": [
         {
-            "Path": "github.com/atotto/clipboard",
-            "Module": "github.com/atotto/clipboard",
+            "Path": "github.com/syndtr/goleveldb/leveldb/storage",
+            "Module": "github.com/syndtr/goleveldb",
             "Tags": [
                 "linux",
                 "openbsd",
                 "freebsd",
                 "netbsd",
-                "solaris",
+                "darwin",
                 "dragonfly"
             ],
             "Files": [
                 {
-                    "Name": "clipboard_unix.go",
+                    "Name": "file_storage_unix.go",
                     "Build": true
                 }
             ]

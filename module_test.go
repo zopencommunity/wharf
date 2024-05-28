@@ -1,5 +1,3 @@
-//go:build false
-
 // Licensed Materials - Property of IBM
 // Copyright IBM Corp. 2023.
 // US Government Users Restricted Rights - Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
@@ -45,7 +43,7 @@ var doLongTests = flag.Bool("long", false, "run long tests")
 var doLatest = flag.Bool("latest", false, "run tests on latest versions of modules")
 
 var goVersionRx = regexp.MustCompile(`go1.([0-9]+)(?:.([0-9]+))?`)
-var moduleNameRx = regexp.MustCompile(`/([a-zA-Z.\-_~]+)(?:/v([0-9]+))?$`)
+var moduleNameRx = regexp.MustCompile(`/([a-zA-Z0-9.\-_~]+)(?:/v([0-9]+))?$`)
 
 var testBin string
 
@@ -227,7 +225,7 @@ func TestModules(t *testing.T) {
 						if len(module.Default) > 0 {
 							test.Paths = module.Default
 						} else {
-							test.Paths = []string{mpath}
+							test.Paths = []string{mpath + "/..."}
 						}
 					}
 
@@ -258,6 +256,8 @@ func TestModules(t *testing.T) {
 					} else if _, err = os.Stat(filepath.Join(testRoot, "go.work")); err != nil {
 						t.Fatalf("go.work not created: unable to stat go.work: %v", err)
 					}
+					// cpcmd := exec.Command("cp", "-r", testRoot, "/home/macmala/wharf-wk/testout")
+					// cpcmd.Run()
 					cmd = exec.Command(testBin, test.Paths...)
 					cmd.Dir = testRoot
 					cmd.Env = append(os.Environ(), "WHARF_TEST_RUN=1")
@@ -269,7 +269,7 @@ func TestModules(t *testing.T) {
 						fmt.Println(stderr.String())
 						t.Fatalf("wharf failure: %v", err)
 					}
-					// fmt.Println(stdout.String())
+					fmt.Println(stdout.String())
 					out := jsonOut{}
 					if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
 						t.Fatalf("unable to parse output: %v", err)

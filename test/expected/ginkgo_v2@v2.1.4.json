@@ -2,19 +2,20 @@
     "modules": [],
     "packages": [
         {
-            "Path": "github.com/atotto/clipboard",
-            "Module": "github.com/atotto/clipboard",
+            "Path": "github.com/onsi/ginkgo/v2/internal",
+            "Module": "github.com/onsi/ginkgo/v2",
             "Tags": [
                 "linux",
                 "openbsd",
                 "freebsd",
                 "netbsd",
+                "darwin",
                 "solaris",
                 "dragonfly"
             ],
             "Files": [
                 {
-                    "Name": "clipboard_unix.go",
+                    "Name": "output_interceptor_unix.go",
                     "Build": true
                 }
             ]
