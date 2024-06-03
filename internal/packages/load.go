@@ -17,6 +17,7 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/zosopentools/wharf/internal/base"
 	"github.com/zosopentools/wharf/internal/tags"
 	"github.com/zosopentools/wharf/internal/util"
 )
@@ -609,7 +610,7 @@ func loadHeader(fset *token.FileSet, path string, onImport func(name string, ipa
 		return
 	}
 
-	bc = tags.Parse(path, src, Goos, BuildTags)
+	bc = tags.Parse(path, src, base.GOOS(), base.BuildTags)
 	if _, ok := bc.(tags.Ignored); ok {
 		return bc, false, nil
 	}

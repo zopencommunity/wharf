@@ -135,8 +135,5 @@ func parseTypeErrorReason(err types.Error) TypeErrId {
 }
 
 func IsExcludeGoListError(errMessage string) bool {
-	if _BUILD_CONSTRAINS_EXCLUDE_ALL_FILE.MatchString(errMessage) {
-		return true
-	}
-	return false
+	return _BUILD_CONSTRAINS_EXCLUDE_ALL_FILE.MatchString(errMessage)
 }
