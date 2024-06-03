@@ -5,15 +5,13 @@
 package porting
 
 import (
-	"errors"
 	"fmt"
 	"go/types"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/zosopentools/wharf/internal/direct"
+	"github.com/zosopentools/wharf/internal/base"
 	"github.com/zosopentools/wharf/internal/packages"
 	"github.com/zosopentools/wharf/internal/tags"
 	"github.com/zosopentools/wharf/internal/util"
@@ -48,101 +46,17 @@ var SuppressOutput = false
 // if any type checking failures occur in any packages, those packages will be attempted to be ported
 //
 // Config must not be nil
-func Port(paths []string, config *Config) (err error) {
-	if config == nil {
-		clearResource()
-		panic("config must not be nil")
-	}
-
-	if config.GoEnv == nil || len(config.GoEnv) == 0 {
-		clearResource()
-		panic("go environment not initialized")
-	}
-
-	// Assumes proper GOOS value
-	packages.Goos = config.GoEnv["GOOS"]
-	packages.BuildTags = make(map[string]bool, len(config.BuildTags))
-
-	// Default cache location is $GOWORK/.wharf_cache
-	if len(config.Cache) == 0 {
-		config.Cache = filepath.Join(filepath.Dir(config.GoEnv["GOWORK"]), ".wharf_cache")
-	}
+func Port(paths []string) (err error) {
 	modcache = make(map[string]*modulepatch, 5)
 
-	// Set up build tags list
-	err = parseGoEnvTags(config.GoEnv, packages.BuildTags)
-	if err != nil {
-		clearResource()
-		return err
-	}
-
-	for _, tag := range config.BuildTags {
-		packages.BuildTags[tag] = true
-	}
-
-	// Initialize the cache
-	err = setupCache(config.Cache)
-	if err != nil {
-		clearResource()
-		return err
-	}
-
-	// Create a temporary go.work file to make changes to
-	aGoWork, err := setupTempGoWork(config.GoEnv["GOWORK"])
-	if err != nil {
-		goto teardown
-	}
-
 	// Actually run porting
-	err = run(paths, config)
-
-teardown:
-	// TODO: only copy go.work if we made changes to the workspace
-	if len(aGoWork) > 0 && !config.DryRun {
-		backup := config.GoEnv["GOWORK"] + ".backup"
-		if werr := util.CopyFile(
-			backup,
-			config.GoEnv["GOWORK"],
-		); werr != nil {
-			goto onCopyFail
-		}
-		if config.Verbose && !SuppressOutput {
-			fmt.Println("Backed up workspace to", backup)
-		}
-
-		if werr := util.CopyFile(
-			config.GoEnv["GOWORK"],
-			aGoWork,
-		); werr != nil {
-			goto onCopyFail
-		}
-
-		if werr := os.Remove(aGoWork + ".sum"); werr != nil && !errors.Is(werr, fs.ErrNotExist) && !SuppressOutput {
-			fmt.Println("WARNING - unable to remove our go.work.sum file:", aGoWork+".sum")
-		}
-
-		if werr := os.Remove(aGoWork); werr != nil && !SuppressOutput {
-			fmt.Println("WARNING - unable to remove our go.work file:", aGoWork)
-		}
-
-		goto onCopyPass
-
-	onCopyFail:
-		if !SuppressOutput {
-			fmt.Println("An error occurred:")
-			fmt.Println("\tUnable to replace the current GOWORK file with our copy.")
-			fmt.Println("\tTherefore, some patches might not be applied.")
-			fmt.Println("\tOur copy is located here:", aGoWork)
-		}
-
-	onCopyPass:
-	}
+	err = run(paths)
 
 	clearResource()
 	return err
 }
 
-func run(paths []string, cfg *Config) error {
+func run(paths []string) error {
 	errs := make([]error, 0, 1) // holding group of error and check it before return nil
 	patchable := make([]*packages.Package, 0, 10)
 
@@ -179,7 +93,7 @@ load:
 				continue
 			}
 
-			err := port(pkg, cfg)
+			err := port(pkg)
 			if err != nil {
 				fmt.Printf("Package require manual porting: %v\n\t%v\n", pkg.ImportPath, err.Error())
 				errs = append(errs, err)
@@ -211,7 +125,7 @@ load:
 
 apply:
 	if len(patchable) > 0 || len(modcache) > 0 {
-		if err := apply(patchable, cfg); err != nil {
+		if err := apply(patchable); err != nil {
 			fmt.Println("Unable to apply patches:", err)
 			return err
 		}
@@ -234,7 +148,7 @@ func clearResource() {
 }
 
 // Run the build + port process on a package
-func port(pkg *packages.Package, cfg *Config) error {
+func port(pkg *packages.Package) error {
 	err := pkg.LoadSyntax()
 	if err != nil {
 		return err
@@ -266,7 +180,7 @@ func port(pkg *packages.Package, cfg *Config) error {
 				}
 				hasErr = true
 			}
-			if cfg.Verbose {
+			if base.Verbose {
 				fmt.Println("\t" + err.Err.Error())
 			}
 		})
@@ -460,15 +374,15 @@ func port(pkg *packages.Package, cfg *Config) error {
 			// check all the errors on the current build to see if they could be changed
 			fname := te.Err.Fset.Position(te.Err.Pos).Filename
 			ipath := pkg.FileImports[fname][iname.PkgName]
-			directives := cfg.Directives[ipath]
+			directives := base.Inlines[ipath]
 			if directives != nil && directives.Exports != nil {
 				ed, ok := directives.Exports[iname.Name.Name]
 				if ok {
 					if fiEdits[fname] == nil {
-						fiEdits[fname] = make(map[string]map[string]direct.ExportDirective)
-						fiEdits[fname][iname.PkgName] = make(map[string]direct.ExportDirective)
+						fiEdits[fname] = make(map[string]map[string]base.ExportInline)
+						fiEdits[fname][iname.PkgName] = make(map[string]base.ExportInline)
 					} else if fiEdits[fname][iname.PkgName] == nil {
-						fiEdits[fname][iname.PkgName] = make(map[string]direct.ExportDirective)
+						fiEdits[fname][iname.PkgName] = make(map[string]base.ExportInline)
 					}
 
 					fiEdits[fname][iname.PkgName][iname.Name.Name] = ed
@@ -491,7 +405,7 @@ func port(pkg *packages.Package, cfg *Config) error {
 		return nil
 	}
 
-	pkgCacheDir := filepath.Join(cfg.Cache, pkg.ImportPath)
+	pkgCacheDir := filepath.Join(base.Cache, pkg.ImportPath)
 	err = os.MkdirAll(pkgCacheDir, 0740)
 	if err != nil {
 		return fmt.Errorf("unable to create cache directory for package: %w", err)
@@ -509,7 +423,7 @@ func port(pkg *packages.Package, cfg *Config) error {
 
 	// We couldn't find a working config, so we try and see if we can fix the package using explicit handlers
 	//
-	if handler := cfg.Directives[pkg.ImportPath]; handler != nil && handler.Files != nil {
+	if handler := base.Inlines[pkg.ImportPath]; handler != nil && handler.Files != nil {
 		err := applyPackageDirective(pkg, pkgCacheDir, handler.Files)
 		// TODO: report on diff failing
 		if err == nil {
@@ -522,9 +436,9 @@ func port(pkg *packages.Package, cfg *Config) error {
 	return fmt.Errorf("no applicable options available to port package %v", pkg.ImportPath)
 }
 
-func apply(pkgs []*packages.Package, cfg *Config) error {
-	showActions := (cfg.Verbose || cfg.DryRun) && !SuppressOutput
-	makeDiff := !cfg.DryRun && cfg.Options["CREATE-PATCH-FILES"] != nil
+func apply(pkgs []*packages.Package) error {
+	showActions := (base.Verbose || base.DryRun) && !SuppressOutput
+	makeDiff := !base.DryRun && base.GeneratePatches
 	diffs := make(map[string]bool)
 	ModuleActions = make([]ModuleAction, 0, len(modcache))
 	PackageActions = make([]PackageAction, 0, 10)
@@ -536,7 +450,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 		action.Fixed = ptc.version
 		action.Imported = ptc.action == modImported
 		if action.Imported {
-			action.Dir = filepath.Join(cfg.ImportDir, path)
+			action.Dir = filepath.Join(base.ImportDir, path)
 		}
 		ModuleActions = append(ModuleActions, action)
 	}
@@ -579,10 +493,10 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 
 		// Perform a clone to workspace if necessary
 		if !pkg.Module.Main {
-			path := filepath.Join(cfg.ImportDir, pkg.Module.Path)
+			path := filepath.Join(base.ImportDir, pkg.Module.Path)
 			action.Dir = path
 
-			if cfg.UseVCS {
+			if base.CloneFromVCS {
 				if err := util.CloneModuleFromVCS(
 					path,
 					pkg.Module.Path,
@@ -616,7 +530,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 		dir, err := util.GoListPkgDir(pkg.ImportPath)
 		if err != nil {
 			if packages.IsExcludeGoListError(err.Error()) {
-				dir = filepath.Join(cfg.ImportDir, pkg.Module.Path)
+				dir = filepath.Join(base.ImportDir, pkg.Module.Path)
 			} else {
 				return err
 			}
@@ -667,7 +581,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 				if ovr != nil {
 					action.Files = append(action.Files, fileAction)
 					// Copy overriden files from the cache
-					newName := fmt.Sprintf("%v_%v.go", strings.TrimSuffix(gofile.Name, ".go"), packages.Goos)
+					newName := fmt.Sprintf("%v_%v.go", strings.TrimSuffix(gofile.Name, ".go"), base.GOOS())
 					var ovrFileAction FileAction
 					ovrFileAction.BaseFile = gofile.Name
 					ovrFileAction.Name = newName
@@ -681,10 +595,10 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 					if current[gofile] {
 						action.Files = append(action.Files, fileAction)
 						if showActions {
-							fmt.Printf("%v: added tag '!%v'\n", gofile.Name, packages.Goos)
+							fmt.Printf("%v: added tag '!%v'\n", gofile.Name, base.GOOS())
 						}
 
-						if !cfg.DryRun {
+						if !base.DryRun {
 							err := util.CopyFile(filepath.Join(dir, newName), ovr.Path)
 							if err != nil {
 								return err
@@ -695,7 +609,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 								return err
 							}
 
-							src, err = util.AppendTagString(src, "!"+packages.Goos, "&&", fmt.Sprintf(_TAG_NOTICE, "!"+packages.Goos))
+							src, err = util.AppendTagString(src, "!"+base.GOOS(), "&&", fmt.Sprintf(_TAG_NOTICE, "!"+base.GOOS()))
 							if err != nil {
 								return err
 							}
@@ -707,13 +621,13 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 						}
 					}
 
-					if !cfg.DryRun {
+					if !base.DryRun {
 						src, err := util.Format(ovr.Syntax, pkg.Fset)
 						if err != nil {
 							return err
 						}
 
-						src, err = util.AppendTagString(src, packages.Goos, "", fmt.Sprintf(_FILE_NOTICE, gofile.Name))
+						src, err = util.AppendTagString(src, base.GOOS(), "", fmt.Sprintf(_FILE_NOTICE, gofile.Name))
 						if err != nil {
 							return err
 						}
@@ -726,9 +640,9 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 
 					// Describe the change changes
 					if showActions {
-						fmt.Printf("%v: added tag '%v'\n", newName, packages.Goos)
+						fmt.Printf("%v: added tag '%v'\n", newName, base.GOOS())
 					}
-					for iname, symbols := range ovr.Meta.(map[string]map[string]direct.ExportDirective) {
+					for iname, symbols := range ovr.Meta.(map[string]map[string]base.ExportInline) {
 						for symname, ed := range symbols {
 							var repstr string
 							switch ed.Type {
@@ -758,13 +672,13 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 					action.Files = append(action.Files, fileAction)
 					// Add tags to files that were not in the default config
 					if showActions {
-						fmt.Printf("%v: added %v tag\n", gofile.Name, packages.Goos)
+						fmt.Printf("%v: added %v tag\n", gofile.Name, base.GOOS())
 					}
 
 					// the default config setting does not contain any files
 					// this means "build constraints exclude all Go files" (_BUILD_CONSTRAINS_EXCLUDE_ALL_FILE)
 					if len(dcfg.GoFiles) == 0 {
-						newName := fmt.Sprintf("%v_%v.go", strings.TrimSuffix(gofile.Name, ".go"), packages.Goos)
+						newName := fmt.Sprintf("%v_%v.go", strings.TrimSuffix(gofile.Name, ".go"), base.GOOS())
 
 						if showActions {
 							fmt.Printf("%v: copied to %v\n", gofile.Name, newName)
@@ -781,7 +695,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 						return err
 					}
 
-					src, err = util.AppendTagString(src, packages.Goos, "||", fmt.Sprintf(_TAG_NOTICE, packages.Goos))
+					src, err = util.AppendTagString(src, base.GOOS(), "||", fmt.Sprintf(_TAG_NOTICE, base.GOOS()))
 					if err != nil {
 						return err
 					}
@@ -789,7 +703,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 					name := gofile.Name
 					cnstr, _ := tags.ParseFileName(name)
 					if cnstr != nil {
-						name = strings.TrimSuffix(name, ".go") + "_" + packages.Goos + ".go"
+						name = strings.TrimSuffix(name, ".go") + "_" + base.GOOS() + ".go"
 					}
 
 					err = os.WriteFile(filepath.Join(dir, name), src, 0744)
@@ -808,7 +722,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 				fileAction.Build = false
 				action.Files = append(action.Files, fileAction)
 				if showActions {
-					fmt.Printf("%v: added !%v tag\n", gofile.Name, packages.Goos)
+					fmt.Printf("%v: added !%v tag\n", gofile.Name, base.GOOS())
 				}
 
 				src, err := util.Format(gofile.Syntax, pkg.Fset)
@@ -816,7 +730,7 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 					return err
 				}
 
-				src, err = util.AppendTagString(src, "!"+packages.Goos, "&&", fmt.Sprintf(_TAG_NOTICE, "!"+packages.Goos))
+				src, err = util.AppendTagString(src, "!"+base.GOOS(), "&&", fmt.Sprintf(_TAG_NOTICE, "!"+base.GOOS()))
 				if err != nil {
 					return err
 				}
@@ -831,9 +745,9 @@ func apply(pkgs []*packages.Package, cfg *Config) error {
 	}
 
 	if makeDiff && len(diffs) > 0 {
-		outdir, _ := filepath.Abs(cfg.GoEnv["GOWORK"])
+		outdir, _ := filepath.Abs(base.GOWORK())
 		outdir = filepath.Dir(outdir)
-		for path, _ := range diffs {
+		for path := range diffs {
 			out := filepath.Join(outdir, filepath.Base(path)+".patch")
 			if err := util.GitDiff(path, out); err != nil {
 				fmt.Fprintf(os.Stderr, "Unable to produce patch file for repo located at %v: %v", path, err.Error())

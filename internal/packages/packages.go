@@ -11,8 +11,6 @@ import (
 )
 
 // These shouldn't change so we can have these as globals for easy reference
-var Goos string
-var BuildTags map[string]bool
 var PackageImportGraph []*ProcGroup
 
 var globalpkgs map[string]*Package = make(map[string]*Package, 50)

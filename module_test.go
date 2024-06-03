@@ -113,7 +113,7 @@ func TestMain(m *testing.M) {
 
 	if _, ranAsWharf := os.LookupEnv(WHARF_TEST_RUN); ranAsWharf {
 		porting.SuppressOutput = true
-		if err := main1(os.Args[1:], []string{}, false, false, false, false, "", make(map[string]any)); err == nil {
+		if err := main1(os.Args[1:], false); err == nil {
 			// TODO: make this shared behaviour within main1
 			outjson := make(map[string]any, 2)
 			outjson["modules"] = porting.ModuleActions
@@ -269,7 +269,7 @@ func TestModules(t *testing.T) {
 						fmt.Println(stderr.String())
 						t.Fatalf("wharf failure: %v", err)
 					}
-					fmt.Println(stdout.String())
+					// fmt.Println(stdout.String())
 					out := jsonOut{}
 					if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
 						t.Fatalf("unable to parse output: %v", err)

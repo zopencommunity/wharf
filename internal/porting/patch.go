@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/zosopentools/wharf/internal/direct"
+	"github.com/zosopentools/wharf/internal/base"
 	"github.com/zosopentools/wharf/internal/packages"
 	"github.com/zosopentools/wharf/internal/util"
 )
@@ -43,7 +43,7 @@ func filterConfigs(pkg *packages.Package, filter func(packages.TypeError) bool) 
 }
 
 // Apply a package's file directives to the package's source and attempt a build
-func applyPackageDirective(pkg *packages.Package, cache string, directives map[string]direct.FileDirective) error {
+func applyPackageDirective(pkg *packages.Package, cache string, directives map[string]base.FileInline) error {
 	pcfg := packages.BuildConfig{
 		Platforms: []string{},
 		GoFiles:   make([]*packages.GoFile, 0, len(pkg.Configs[0].GoFiles)),
@@ -52,7 +52,7 @@ func applyPackageDirective(pkg *packages.Package, cache string, directives map[s
 
 	for name, fh := range directives {
 		switch fh.Type {
-		case direct.DiffType:
+		case base.InlineDiffSym:
 			// Load diff file contents
 			diff, err := util.ReadFile(fh.Path)
 			if err != nil {
@@ -107,13 +107,13 @@ func applyPackageDirective(pkg *packages.Package, cache string, directives map[s
 }
 
 // File Name -> Import Name -> Symbol Name -> Directive
-type fileImportEdits map[string]map[string]map[string]direct.ExportDirective
+type fileImportEdits map[string]map[string]map[string]base.ExportInline
 
 // Apply export directives to a package based on the
 func applyExportDirective(pkg *packages.Package, cache string, fiEdits fileImportEdits) error {
 	ccfg := pkg.Configs[pkg.CfgIdx]
 	pcfg := packages.BuildConfig{
-		Platforms: []string{packages.Goos},
+		Platforms: []string{base.GOOS()},
 		GoFiles:   make([]*packages.GoFile, 0, len(ccfg.GoFiles)),
 		Override:  make(map[string]*packages.ExtGoFile, len(fiEdits)),
 	}

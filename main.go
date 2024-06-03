@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/mattn/go-isatty"
-	"github.com/zosopentools/wharf/internal/direct"
+	"github.com/zosopentools/wharf/internal/base"
 	"github.com/zosopentools/wharf/internal/porting"
 	"github.com/zosopentools/wharf/internal/util"
 )
@@ -33,7 +33,6 @@ var (
 )
 
 func main() {
-	opts := make(map[string]any)
 	// Parse cmd line flags
 	helpFlag := flag.Bool("help", false, "Print help text")
 	tagsFlag := flag.String("tags", "", "List of build tags")
@@ -43,7 +42,7 @@ func main() {
 	vcsFlag := flag.Bool("q", false, "Clone the package from VCS")
 	configFlag := flag.String("config", "", "Config for additional code edits")
 	patchesFlag := flag.Bool("p", false, "Saves patch files to filesystem path")
-	iDirFlag := flag.String("d", "", "Path to store imported modules")
+	iDirFlag := flag.String("d", "", "Path to store imported modules") // TODO: Enable
 	forceFlag := flag.Bool("f", false, "Force operation even if imported module path exists")
 	versionFlag := flag.Bool("version", false, "Display version information")
 	flag.Parse()
@@ -81,31 +80,56 @@ func main() {
 
 	// Handle config file argument
 	if *configFlag != "" {
-		rawcfg, err := util.ReadFile(*configFlag)
-		if err != nil {
-			log.Fatal("Unable to read config file", err)
+		if err := base.LoadInlines(*configFlag); err != nil {
+			log.Fatal("Unable to load inlines file", err)
 		}
-
-		cfg, err := direct.ParseConfig(rawcfg)
-		if err != nil {
-			log.Fatal("Unable to parse config file", err)
-		}
-
-		direct.Apply(cfg)
 	}
 
-	if *patchesFlag {
-		if !*vcsFlag {
-			log.Fatal("Cannot use -p flag without enabling vcs cloning")
-		}
-		opts["CREATE-PATCH-FILES"] = true
+	base.Verbose = *verboseFlag
+	base.DryRun = *dryRunFlag
+	base.CloneFromVCS = *vcsFlag
+	base.GeneratePatches = *patchesFlag
+
+	if base.GeneratePatches && !base.CloneFromVCS {
+		log.Fatal("Cannot use -p flag without enabling vcs cloning")
 	}
 
-	tags := strings.Split(*tagsFlag, ",")
+	if len(*tagsFlag) > 0 {
+		for _, tag := range strings.Split(*tagsFlag, ",") {
+			base.BuildTags[tag] = true
+		}
+	}
+
+	if len(*iDirFlag) > 0 {
+		base.ImportDir = *iDirFlag
+	}
+
+	// Bypass if set to force operations (this is intended for scripts to be able to use if necessary)
+	if !*forceFlag {
+		_, dstErr := os.Lstat(base.ImportDir)
+		if dstErr == nil {
+			if isatty.IsTerminal(os.Stdin.Fd()) {
+				fmt.Printf("WARNING: Import destination already exists: %v\n", base.ImportDir)
+				fmt.Println("WARNING: Running Wharf may cause some data to get overridden")
+				fmt.Print("Run anyways? [y/N]: ")
+				var confirm string
+				fmt.Scanln(&confirm)
+				if confirm != "y" && confirm != "Y" {
+					os.Exit(0)
+				}
+			} else {
+				log.Fatalf("Import destination already exists: %v\nWill not overwrite. Aborting.", base.ImportDir)
+			}
+		}
+	}
+
+	if *verboseFlag {
+		fmt.Println("Importing modules to:", base.ImportDir)
+	}
 
 	paths := flag.Args()
 
-	if err := main1(paths, tags, *verboseFlag, *dryRunFlag, *forceFlag, *vcsFlag, *iDirFlag, opts); err != nil {
+	if err := main1(paths, !*dryRunFlag); err != nil {
 		fmt.Println(err.Error())
 		fmt.Println("Porting failed due to errors mentioned above")
 	} else {
@@ -125,63 +149,65 @@ func main() {
 
 func main1(
 	paths []string,
-	tags []string,
-	verbose bool,
-	dryRun bool,
-	force bool,
-	useVCS bool,
-	importDir string,
-	opts map[string]any,
+	commit bool,
 ) error {
-	// Verify that we are running in a workspace
-	goenv, err := util.GoEnv()
-	if err != nil {
-		log.Fatal("Unable to read 'go env':", err)
+	removeWork := true
+	if base.GOWORK() == "" {
+		log.Fatal("no workspace found; please initialize one using `go work init` and add modules")
 	}
 
-	// Setup import directory
-	if gowork := goenv["GOWORK"]; gowork != "" {
-		// TODO: report this when verbose flag set
-		if importDir == "" {
-			// TODO: make this relative to the current position
-			// so that `go work use` uses a relative position instead of absolute
-			importDir = filepath.Join(filepath.Dir(gowork), "wharf_port")
-		}
-
-		if verbose {
-			fmt.Println("Import path set to:", importDir)
-		}
-	} else {
-		log.Fatal("No Go Workspace found; please initialize one using `go work init` and add packages to port")
+	// Setup a private go.work file to make changes to as we work - while keeping the original safe
+	wfWork := filepath.Join(filepath.Dir(base.GOWORK()), ".wharf.work")
+	if err := util.CopyFile(wfWork, base.GOWORK()); err != nil {
+		log.Fatalf("unable to create temporary workspace: %v", err)
 	}
-
-	// Bypass if set to force operations (this is intended for scripts to be able to use if necessary)
-	if !force {
-		_, dstErr := os.Lstat(importDir)
-		if dstErr == nil {
-			if isatty.IsTerminal(os.Stdin.Fd()) {
-				fmt.Printf("WARNING: Import destination already exists (%v)\n", importDir)
-				fmt.Println("WARNING: Running Wharf may cause some data to get overridden")
-				fmt.Print("Run anyways? [y/N]: ")
-				var confirm string
-				fmt.Scanln(&confirm)
-				if confirm != "y" && confirm != "Y" {
-					os.Exit(0)
-				}
-			} else {
-				log.Fatalf("Import destination already exists (%v)\nWill not overwrite. Aborting.", importDir)
+	defer func(all *bool) {
+		if err := os.Remove(wfWork + ".sum"); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to remove: %v: %v", wfWork+".sum", err)
+		}
+		if *all {
+			if err := os.Remove(wfWork); err != nil {
+				fmt.Fprintf(os.Stderr, "unable to remove: %v: %v", wfWork, err)
 			}
 		}
+	}(&removeWork)
+	if err := os.Setenv("GOWORK", wfWork); err != nil {
+		log.Fatalf("unable to update GOWORK: %v", err)
 	}
 
-	return porting.Port(paths, &porting.Config{
-		GoEnv:      goenv,
-		ImportDir:  importDir,
-		Directives: direct.Config,
-		BuildTags:  tags,
-		Verbose:    verbose,
-		DryRun:     dryRun,
-		UseVCS:     useVCS,
-		Options:    opts,
-	})
+	if err := os.MkdirAll(base.Cache, 0755); err != nil {
+		log.Fatalf("unable to create cache at %v: %v", base.Cache, err)
+	}
+	defer func() {
+		if err := os.RemoveAll(base.Cache); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to remove cache: %v: %v", base.Cache, err)
+		}
+	}()
+
+	if perr := porting.Port(paths); perr != nil {
+		return perr
+	}
+
+	if commit {
+		var err error
+		backup := base.GOWORK() + ".backup"
+		if err = util.CopyFile(backup, base.GOWORK()); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to backup workspace to %v: %v\n", backup, err)
+		} else if err = util.CopyFile(base.GOWORK(), wfWork); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to update workspace: %v\n", wfWork)
+		}
+
+		// TODO: this will get displayed on JSON output, which is bad
+		if err != nil {
+			removeWork = false
+			fmt.Println("An error occurred:")
+			fmt.Println("\tUnable to replace the current GOWORK file with our copy.")
+			fmt.Println("\tTherefore, some patches might not be applied.")
+			fmt.Println("\tOur copy is located here:", wfWork)
+		}
+
+		fmt.Println("Created workspace backup:", backup)
+	}
+
+	return nil
 }
