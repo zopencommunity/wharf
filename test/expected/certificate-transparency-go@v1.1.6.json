@@ -1,0 +1,22 @@
+{
+    "modules": [],
+    "packages": [
+        {
+            "Path": "github.com/google/certificate-transparency-go/x509",
+            "Module": "github.com/google/certificate-transparency-go",
+            "Tags": [
+                "linux"
+            ],
+            "Files": [
+                {
+                    "Name": "root_linux.go",
+                    "Build": true
+                },
+                {
+                    "Name": "root_unix.go",
+                    "Build": true
+                }
+            ]
+        }
+    ]
+}

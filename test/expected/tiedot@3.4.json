@@ -1,0 +1,22 @@
+{
+    "modules": [],
+    "packages": [
+        {
+            "Path": "github.com/HouzuoGuo/tiedot/gommap",
+            "Module": "github.com/HouzuoGuo/tiedot",
+            "Tags": [
+                "linux",
+                "openbsd",
+                "freebsd",
+                "netbsd",
+                "darwin"
+            ],
+            "Files": [
+                {
+                    "Name": "mmap_unix.go",
+                    "Build": true
+                }
+            ]
+        }
+    ]
+}

@@ -13,9 +13,9 @@ github.com/atotto/clipboard:
 #   long: true
 #   tests:
 #     - version: v20.10.9
-go.etcd.io/etcd/v3:
-  tests:
-    - version: v3.4.20
+# go.etcd.io/etcd/v3:
+#   tests:
+#     - version: v3.4.20
 github.com/peak/s5cmd/v2:
   tests:
     - version: v2.2.2
@@ -60,16 +60,24 @@ github.com/charmbracelet/gum:
   - version: v0.14.1
 
 # Below are packages/modules that still need to get test data generated for
-# github.com/HouzuoGuo/tiedot:
-# github.com/olekukonko/ts:
-# github.com/google/certificate-transparency-go/x509:
-# github.com/subgraph/paxrat:
-# github.com/unrolled/render:
+github.com/HouzuoGuo/tiedot:
+  tests:
+  - version: 3.4
+github.com/google/certificate-transparency-go:
+  default:
+    - github.com/google/certificate-transparency-go/x509
+  tests:
+    - version: v1.1.6
+github.com/subgraph/paxrat:
+  tests:
+  - version: v1.32.0
+github.com/unrolled/render:
+  tests:
+  - version: v1.6.1
 # google.golang.org/grpc:
 # github.com/elastic/go-txfile:
 # github.com/mattn/go-isatty:
 # github.com/gin-gonic/gin:
-# github.com/fsnotify/fsnotify:
 # github.com/elastic/mmap-go:
 # github.com/lib/pq:
 # github.com/u-root/u-root
@@ -88,5 +96,19 @@ github.com/charmbracelet/gum:
 #   - version: v1.3.0
 
 # github.com/WireGuard/wireguard-go:
-  tests:
-  - version: 0.0.20230223
+#   tests:
+#   - version: 0.0.20230223
+
+# Disabled because these modules have no issues on its own (must have test code setup to port against)
+
+# github.com/olekukonko/ts:
+#   tests:
+#   - version: 78ecb04
+
+# github.com/subgraph/inotify:
+#   tests:
+#   - version: v0.0.1
+
+# github.com/fsnotify/fsnotify:
+#   tests:
+#   - version: v1.6.0
