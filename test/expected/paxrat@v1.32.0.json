@@ -1,0 +1,25 @@
+{
+    "modules": [
+        {
+            "Path": "github.com/subgraph/inotify",
+            "Version": "v0.0.1",
+            "Fixed": "v0.0.1",
+            "Imported": true
+        }
+    ],
+    "packages": [
+        {
+            "Path": "github.com/subgraph/inotify",
+            "Module": "github.com/subgraph/inotify",
+            "Tags": [
+                "linux"
+            ],
+            "Files": [
+                {
+                    "Name": "inotify_linux.go",
+                    "Build": true
+                }
+            ]
+        }
+    ]
+}
