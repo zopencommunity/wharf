@@ -269,7 +269,7 @@ func TestModules(t *testing.T) {
 						fmt.Println(stderr.String())
 						t.Fatalf("wharf failure: %v", err)
 					}
-					// fmt.Println(stdout.String())
+					// fmt.Println(stderr.String())
 					out := jsonOut{}
 					if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
 						t.Fatalf("unable to parse output: %v", err)

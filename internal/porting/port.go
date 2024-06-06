@@ -64,7 +64,7 @@ load:
 	// Load packages
 	stack, err := packages.Load(paths, func(pkg packages.RawPackage, iscli bool) (packages.LoadOption, error) {
 		// Packages that match CLI arguments should always be located inside the workspace
-		if iscli && (pkg.Module == nil || !pkg.Module.Main) {
+		if iscli && !pkg.DepOnly && (pkg.Module == nil || !pkg.Module.Main) {
 			return 0, fmt.Errorf("%v: target package must be included in Main module", pkg.ImportPath)
 		}
 		// Goroot and GolangX packages we assume are to be properly typed at all times
