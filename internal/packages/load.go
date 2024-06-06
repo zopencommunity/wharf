@@ -45,6 +45,7 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 	// Global package reference (used for determining packages later on)
 	loadedPkgs := make(map[string]*Package, len(globalpkgs))
 	loadedModules := make(map[string]*Module, 10)
+	toLoadPkgs := make(map[string]bool, 10)
 
 	// Cached layer stack
 	layers := make([]*ProcGroup, 0, 30)
@@ -57,6 +58,8 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 	cli := true
 	clipkgs := make([]*Package, 0, len(paths))
 
+	loads := make([]int, 0, 10)
+
 	// //// / //
 	// PASS 1 //
 	// //// / //
@@ -65,6 +68,7 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 	//
 	// Do first load (command line listed packages)
 	for len(next) > 0 {
+		loads = append(loads, len(next))
 		// Load from go-list
 		listout, err := util.GoList(next)
 		if err != nil {
@@ -103,6 +107,7 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 				loadedPkgs[path] = pkg
 
 				next = append(next, path)
+				toLoadPkgs[path] = true
 			}
 			return pkg
 		}
@@ -110,6 +115,7 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 		for _, jpkg := range jpkgs {
 			// Lookup package or create new entry
 			pkg := register(jpkg.ImportPath)
+			delete(toLoadPkgs, jpkg.ImportPath)
 
 			if pkg.color == searchable {
 				continue
@@ -163,7 +169,9 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 
 			if cli {
 				pkg.Active = true
-				clipkgs = append(clipkgs, pkg)
+				if !jpkg.DepOnly {
+					clipkgs = append(clipkgs, pkg)
+				}
 			}
 
 			// go-list errors mean the environment is bad -> stop loading for bad environments
@@ -282,8 +290,14 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 			pkg.color = searchable
 		}
 
+		for path := range toLoadPkgs {
+			next = append(next, path)
+		}
+
 		cli = false
 	}
+
+	fmt.Fprintf(os.Stderr, "Performed %v loads: %v", len(loads), loads)
 
 	// //// / //
 	// PASS 2 //

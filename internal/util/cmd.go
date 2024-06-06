@@ -114,7 +114,7 @@ func GoListModUpdate(mod string) (string, error) {
 
 // Run go list
 func GoList(pkgs []string) (string, error) {
-	cmd := exec.Command("go", append([]string{"list", "-json", "-e", "-mod=readonly"}, pkgs...)...)
+	cmd := exec.Command("go", append([]string{"list", "-json", "-e", "-deps", "-mod=readonly"}, pkgs...)...)
 	return runout(cmd)
 }
 
