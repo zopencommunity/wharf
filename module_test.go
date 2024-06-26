@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/zosopentools/wharf/internal/port2"
 	"github.com/zosopentools/wharf/internal/porting"
 	"golang.org/x/tools/go/vcs"
 	"gopkg.in/yaml.v3"
@@ -113,11 +114,12 @@ func TestMain(m *testing.M) {
 
 	if _, ranAsWharf := os.LookupEnv(WHARF_TEST_RUN); ranAsWharf {
 		porting.SuppressOutput = true
-		if err := main1(os.Args[1:], false); err == nil {
+		port2.SuppressOutput = true
+		if err := main2(os.Args[1:], false); err == nil {
 			// TODO: make this shared behaviour within main1
 			outjson := make(map[string]any, 2)
-			outjson["modules"] = porting.ModuleActions
-			outjson["packages"] = porting.PackageActions
+			outjson["modules"] = port2.ModuleActions
+			outjson["packages"] = port2.PackageActions
 			if outstrm, err := json.MarshalIndent(outjson, "", "\t"); err == nil {
 				fmt.Println(string(outstrm))
 			} else {
@@ -266,10 +268,12 @@ func TestModules(t *testing.T) {
 					cmd.Stdout = &stdout
 					cmd.Stderr = &stderr
 					if err := cmd.Run(); err != nil {
-						fmt.Println(stderr.String())
+						// fmt.Println(stderr.String())
+						// fmt.Println(stdout.String())
 						t.Fatalf("wharf failure: %v", err)
 					}
 					// fmt.Println(stderr.String())
+					// fmt.Println(stdout.String())
 					out := jsonOut{}
 					if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
 						t.Fatalf("unable to parse output: %v", err)

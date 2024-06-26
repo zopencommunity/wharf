@@ -5,6 +5,7 @@ go.etcd.io/bbolt:
   tests:
     - version: v1.3.6
 github.com/atotto/clipboard:
+  name: atotto_clipboard
   tests:
     - version: v0.1.4
 # github.com/docker/docker:
@@ -22,6 +23,10 @@ github.com/peak/s5cmd/v2:
 github.com/antonmedv/fx:
   tests:
     - version: 34.0.0
+github.com/antonmedv/clipboard:
+  name: antonmedv_clipboard
+  tests:
+    - version: v1.0.1
 github.com/onsi/ginkgo/v2:
   tests:
     - version: v2.1.4
