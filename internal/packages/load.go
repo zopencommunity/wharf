@@ -297,8 +297,6 @@ func Load(paths []string, getOpts func(RawPackage, bool) (LoadOption, error)) (*
 		cli = false
 	}
 
-	fmt.Fprintf(os.Stderr, "Performed %v loads: %v", len(loads), loads)
-
 	// //// / //
 	// PASS 2 //
 	// //// / //

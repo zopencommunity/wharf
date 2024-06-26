@@ -1,0 +1,23 @@
+{
+    "modules": [],
+    "packages": [
+            {
+                    "Path": "github.com/antonmedv/clipboard",
+                    "Module": "github.com/antonmedv/clipboard",
+                    "Tags": [
+                            "linux",
+                            "openbsd",
+                            "freebsd",
+                            "netbsd",
+                            "solaris",
+                            "dragonfly"
+                    ],
+                    "Files": [
+                            {
+                                    "Name": "clipboard_unix.go",
+                                    "Build": true
+                            }
+                    ]
+            }
+    ]
+}
