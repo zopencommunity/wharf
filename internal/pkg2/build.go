@@ -9,12 +9,6 @@ import (
 	"regexp"
 )
 
-type Importer func(path string) (*types.Package, error)
-
-func (f Importer) Import(path string) (*types.Package, error) {
-	return f(path)
-}
-
 // Errors came in the following formats:
 // [symbol] not declared by package [pkg]
 // undeclared name: [symbol]

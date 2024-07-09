@@ -10,7 +10,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -26,7 +25,8 @@ var cache map[string]*Package = make(map[string]*Package, 50)
 // We load as many packages as we can at once - and pick up any "unimported" packages
 // (packages that were imported by source files not marked for build under the present system)
 // Any unimported packages we then go and load ourselves (and continue this process until all packages are loaded)
-func List(paths []string) ([]*Package, error) {
+func List(paths []string) (ImportTree, error) {
+	// fmt.Fprintf(os.Stderr, "\n#### LOAD #### \n\n")
 	found := make(map[string]*Package, len(cache))
 	seeking := make(map[string]bool, 10)
 
@@ -45,9 +45,10 @@ func List(paths []string) ([]*Package, error) {
 	}
 
 	for len(next) > 0 {
+		// fmt.Fprintf(os.Stderr, "\n--- PASS ---\n")
 		listout, err := util.GoList(next)
 		if err != nil {
-			return nil, err
+			return ImportTree{}, err
 		}
 
 		var metaPkgs []*MetaPackage
@@ -62,7 +63,7 @@ func List(paths []string) ([]*Package, error) {
 		}
 
 		if len(metaPkgs) == 0 {
-			return nil, fmt.Errorf("no packages found in the workspace")
+			return ImportTree{}, fmt.Errorf("no packages found in the workspace")
 		}
 
 		for _, meta := range metaPkgs {
@@ -87,7 +88,7 @@ func List(paths []string) ([]*Package, error) {
 
 			if firstLoad && !meta.DepOnly {
 				if meta.Module == nil || !meta.Module.Main {
-					return nil, fmt.Errorf("%v: target package must be included in Main module", meta.ImportPath)
+					return ImportTree{}, fmt.Errorf("%v: target package must be included in Main module", meta.ImportPath)
 				}
 				matching = append(matching, pkg)
 			}
@@ -102,16 +103,16 @@ func List(paths []string) ([]*Package, error) {
 						meta.Name = tags.FindPackageName(meta.Dir, meta.IgnoredGoFiles)
 					}
 				} else {
-					return nil, fmt.Errorf("unable to load %v: %v", meta.ImportPath, meta.Error.Err)
+					return ImportTree{}, fmt.Errorf("unable to load %v: %v", meta.ImportPath, meta.Error.Err)
 				}
 			}
 
 			// Use the directory as a check for if package information has changed
 			// Go uses different directories for different module versions
 			if doLoad {
-				// fmt.Fprintf(os.Stderr, "# %v\n", pkg.Meta.ImportPath)
+				// fmt.Fprintf(os.Stderr, "\n# %v\n", pkg.Meta.ImportPath)
 				if err = loadPkg(pkg); err != nil {
-					return nil, err
+					return ImportTree{}, err
 				}
 
 				// Register all imported packages (and do sanity check on packages that go-list reported)
@@ -178,6 +179,9 @@ func List(paths []string) ([]*Package, error) {
 
 			found[meta.ImportPath] = pkg
 			for iPath := range pkg.Imports {
+				if iPath == "github.com/moby/docker-image-spec/specs-go/v1" {
+					fmt.Fprintln(os.Stderr, "perfstat found:", meta.ImportPath)
+				}
 				if mapped, ok := pkg.Meta.ImportMap[iPath]; ok {
 					iPath = mapped
 				}
@@ -194,7 +198,7 @@ func List(paths []string) ([]*Package, error) {
 		}
 	}
 
-	return matching, nil
+	return ImportTree{from: matching}, nil
 }
 
 func loadPkg(pkg *Package) error {
@@ -425,6 +429,7 @@ func loadGoFile(file *GoFile, fset *token.FileSet, syntax bool, forceLoad bool) 
 		file.Syntax = parsed
 	}
 
+	altNames := make(map[string]string)
 	file.Imports = make(map[string]string, len(parsed.Imports))
 	for _, isyn := range parsed.Imports {
 		// String literals are wrapped in double quotes, need to remove those
@@ -441,99 +446,28 @@ func loadGoFile(file *GoFile, fset *token.FileSet, syntax bool, forceLoad bool) 
 				continue
 			}
 		} else {
-			name = path.Base(ipath)
-			dotidx := strings.Index(name, ".")
-			if dotidx > -1 {
-				name = name[:dotidx]
+			aname, alt := ImportPathToAssumedName(ipath)
+			name = aname
+			if alt != "" {
+				altNames[ipath] = alt
 			}
-			dashidx := strings.LastIndex(name, "-")
-			if dashidx > -1 {
-				name = name[dashidx+1:]
+		}
+		if conflict := file.Imports[name]; conflict != "" {
+			if alt := altNames[ipath]; alt != "" {
+				name = alt
+			} else if alt := altNames[conflict]; alt != "" {
+				// Write current package
+				file.Imports[ipath] = name
+				// Setup to write package we just overrode
+				ipath = conflict
+				name = alt
 			}
+		}
+		if file.Imports[name] != "" {
+			panic("duplicate import name found")
 		}
 		file.Imports[name] = ipath
 	}
 
 	return nil
-}
-
-// Perform recursive DFS on the tree
-//
-// During the search:
-// - Build topology
-// - Check for cycles
-// - Build exported types for packages
-func Resolve(start []*Package, onVisit func(*Package)) ([][]*Package, error) {
-	layers := make([][]*Package, 0, 30)
-	layers = append(layers, make([]*Package, 0))
-	visited := make(map[string]bool, len(cache))
-
-	var visit func(pkg *Package) (int, error)
-	visit = func(pkg *Package) (int, error) {
-		// Handle cases where we have visited the node already
-		if done, checked := visited[pkg.Meta.ImportPath]; done {
-			return pkg.level, nil
-		} else if checked {
-			return -1, &importCycleError{
-				stack: []string{
-					pkg.Meta.ImportPath,
-				},
-			}
-		}
-
-		// Mark so that if we see it again, we know we have a cycle
-		visited[pkg.Meta.ImportPath] = false
-
-		level := 0
-
-		// Visit each import path
-		for _, ipkg := range pkg.Imports {
-			ipkg.Parents = append(ipkg.Parents, pkg)
-
-			seenlevel, err := visit(ipkg)
-			if err != nil {
-				// Create traceback for import cycles
-				if ice, ok := err.(*importCycleError); ok {
-					ice.stack = append(ice.stack, pkg.Meta.ImportPath)
-				}
-				return -1, err
-			}
-
-			pkg.DepDirty = pkg.DepDirty || ipkg.DepDirty || ipkg.Dirty
-			// If the child's level is higher or identical to our currently known level we move up
-			if seenlevel >= level {
-				level = seenlevel + 1
-			}
-		}
-
-		onVisit(pkg)
-
-		// We now have a known level, so we attach the import layer
-		for len(layers) <= level {
-			layers = append(layers, make([]*Package, 0))
-		}
-
-		layers[level] = append(layers[level], pkg)
-		pkg.level = level
-		visited[pkg.Meta.ImportPath] = true
-
-		return level, nil
-	}
-
-	for _, pkg := range start {
-		if done, checked := visited[pkg.Meta.ImportPath]; done {
-			// Node already visited, pass
-			continue
-		} else if checked {
-			panic("package is marked visited when no DFS is currently being performed")
-		} else {
-			// DFS on this node
-			_, err := visit(pkg)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return layers, nil
 }
