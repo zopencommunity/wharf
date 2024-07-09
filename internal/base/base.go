@@ -43,7 +43,7 @@ func initGoEnv() {
 		}
 	} else {
 		vnum = 18
-		fmt.Fprintf(os.Stderr, "unknown go version number (%v) - assuming go1.18", goenv["GOVERSION"])
+		fmt.Fprintf(os.Stderr, "unknown go version number (%v) - assuming go1.18\n", goenv["GOVERSION"])
 	}
 
 	for vnum >= 0 {

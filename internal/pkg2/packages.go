@@ -7,8 +7,12 @@ package pkg2
 import (
 	"go/ast"
 	"go/token"
+	"path"
 	"regexp"
+	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/zosopentools/wharf/internal/tags"
 )
@@ -39,6 +43,127 @@ func IsExcludeGoListError(errMessage string) bool {
 
 func BackupNameLookup(name string) *Package {
 	return backupLookupMap[name]
+}
+
+func ImportPathToAssumedName(importPath string) (string, string) {
+	alt := ""
+	base := path.Base(importPath)
+	if strings.HasPrefix(base, "v") {
+		if _, err := strconv.Atoi(base[1:]); err == nil {
+			dir := path.Dir(importPath)
+			if dir != "." {
+				alt = base
+				base = path.Base(dir)
+			}
+		}
+	}
+	base = strings.TrimPrefix(base, "go-")
+	if i := strings.IndexFunc(base, notIdentifier); i >= 0 {
+		base = base[:i]
+	}
+	return base, alt
+}
+
+func notIdentifier(ch rune) bool {
+	return !('a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' ||
+		'0' <= ch && ch <= '9' ||
+		ch == '_' ||
+		ch >= utf8.RuneSelf && (unicode.IsLetter(ch) || unicode.IsDigit(ch)))
+}
+
+type ImportTree struct {
+	resolved bool
+	from     []*Package
+	groups   [][]*Package
+}
+
+func (tree *ImportTree) Groups() [][]*Package {
+	if !tree.resolved {
+		panic("attempted acquire of groups on unresolved import tree (call ImportTree.Resolve before ImportTree.Groups)")
+	}
+	return tree.groups
+}
+
+// Perform recursive DFS on the tree
+//
+// During the search:
+// - Build topology
+// - Check for cycles
+// - Build exported types for packages
+func (tree *ImportTree) Resolve(onVisit func(*Package)) error {
+	layers := make([][]*Package, 0, 30)
+	layers = append(layers, make([]*Package, 0))
+	visited := make(map[string]bool, len(cache))
+
+	var visit func(pkg *Package) (int, error)
+	visit = func(pkg *Package) (int, error) {
+		// Handle cases where we have visited the node already
+		if done, checked := visited[pkg.Meta.ImportPath]; done {
+			return pkg.level, nil
+		} else if checked {
+			return -1, &importCycleError{
+				stack: []string{
+					pkg.Meta.ImportPath,
+				},
+			}
+		}
+
+		// Mark so that if we see it again, we know we have a cycle
+		visited[pkg.Meta.ImportPath] = false
+
+		level := 0
+
+		// Visit each import path
+		for _, ipkg := range pkg.Imports {
+			ipkg.Parents = append(ipkg.Parents, pkg)
+
+			seenlevel, err := visit(ipkg)
+			if err != nil {
+				// Create traceback for import cycles
+				if ice, ok := err.(*importCycleError); ok {
+					ice.stack = append(ice.stack, pkg.Meta.ImportPath)
+				}
+				return -1, err
+			}
+
+			pkg.DepDirty = pkg.DepDirty || ipkg.DepDirty || ipkg.Dirty
+			// If the child's level is higher or identical to our currently known level we move up
+			if seenlevel >= level {
+				level = seenlevel + 1
+			}
+		}
+
+		onVisit(pkg)
+
+		// We now have a known level, so we attach the import layer
+		for len(layers) <= level {
+			layers = append(layers, make([]*Package, 0))
+		}
+
+		layers[level] = append(layers[level], pkg)
+		pkg.level = level
+		visited[pkg.Meta.ImportPath] = true
+
+		return level, nil
+	}
+
+	for _, pkg := range tree.from {
+		if done, checked := visited[pkg.Meta.ImportPath]; done {
+			// Node already visited, pass
+			continue
+		} else if checked {
+			panic("package is marked visited when no DFS is currently being performed")
+		} else {
+			// DFS on this node
+			_, err := visit(pkg)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	tree.resolved = true
+	return nil
 }
 
 type Package struct {

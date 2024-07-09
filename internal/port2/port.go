@@ -40,27 +40,6 @@ type PortingError struct {
 	Error   error
 }
 
-type Controller struct {
-	paths  []string
-	tree   [][]*pkg2.Package
-	states map[*pkg2.Package]*state
-
-	patchable map[*pkg2.Package]bool
-	workspace map[string]*workEdit
-
-	// Errors that occurred during porting of a package
-	Errors []error
-
-	// Control
-	treeIsDirty bool
-
-	// Ensure controller is only ran once
-	complete bool
-
-	// Metrics
-	loadCount uint
-}
-
 func NewController(paths []string) *Controller {
 	return &Controller{
 		paths:  paths,
@@ -98,17 +77,17 @@ func (c *Controller) Run() error {
 	return nil
 }
 
-func (c *Controller) load() error {
+func (c *Controller) load() (err error) {
 	c.loadCount += 1
 	c.treeIsDirty = false
 
 	// Load packages
-	targets, err := pkg2.List(c.paths)
+	c.tree, err = pkg2.List(c.paths)
 	if err != nil {
 		return fmt.Errorf("package discovery: %w", err)
 	}
 
-	c.tree, err = pkg2.Resolve(targets, func(pkg *pkg2.Package) {
+	err = c.tree.Resolve(func(pkg *pkg2.Package) {
 		s := c.states[pkg]
 		if s == nil {
 			s = &state{}
@@ -152,14 +131,11 @@ func (c *Controller) load() error {
 }
 
 func (c *Controller) portAll() error {
-	if c.tree == nil {
-		panic("package tree not initialized")
-	}
-
+	groups := c.tree.Groups()
 	valid := true
-	for i := range c.tree {
-		packages := c.tree[len(c.tree)-(i+1)]
-		// fmt.Fprintf(os.Stderr, "# LAYER %v\n", len(c.tree)-(i+1))
+	for i := range groups {
+		packages := groups[len(groups)-(i+1)]
+		// fmt.Fprintf(os.Stderr, "# LAYER %v\n", len(groups)-(i+1))
 
 		for _, pkg := range packages {
 			state := c.states[pkg]
@@ -217,11 +193,6 @@ func (c *Controller) port(pkg *pkg2.Package) error {
 	if c.patchable[pkg] {
 		panic("trying to port package that already has patch associated with it")
 	}
-
-	fmt.Fprintln(os.Stderr, pkg)
-	fmt.Fprintln(os.Stderr, state.ps)
-	fmt.Fprintln(os.Stderr, state.errs)
-	fmt.Fprintln(os.Stderr, state.cfi)
 
 	// If this is the first time checking this package verify
 	// that it has errors before we begin our investigation
@@ -943,7 +914,7 @@ func (c *Controller) typeCheck(pkg *pkg2.Package, tcfg *types.Config) (typed *ty
 		errs = append(errs, pkg2.NewTypeCheckError(err.(types.Error)))
 	}
 
-	tcfg.Importer = (pkg2.Importer)(func(path string) (*types.Package, error) {
+	tcfg.Importer = (importer)(func(path string) (*types.Package, error) {
 		if path == pkg2.UNSAFE_PACKAGE_NAME {
 			return types.Unsafe, nil
 		}
