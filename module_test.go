@@ -21,15 +21,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zosopentools/wharf/internal/port2"
+	"github.com/zosopentools/wharf/internal/base"
 	"github.com/zosopentools/wharf/internal/porting"
 	"golang.org/x/tools/go/vcs"
 	"gopkg.in/yaml.v3"
 )
 
 type jsonOut struct {
-	Modules  []porting.ModuleAction
-	Packages []porting.PackageAction
+	Modules  []base.ModulePin
+	Packages []base.PackagePatch
 }
 
 const WHARF_TEST_RUN = "WHARF_TEST_RUN"
@@ -114,17 +114,7 @@ func TestMain(m *testing.M) {
 
 	if _, ranAsWharf := os.LookupEnv(WHARF_TEST_RUN); ranAsWharf {
 		porting.SuppressOutput = true
-		port2.SuppressOutput = true
 		if err := main2(os.Args[1:], false); err == nil {
-			// TODO: make this shared behaviour within main1
-			outjson := make(map[string]any, 2)
-			outjson["modules"] = port2.ModuleActions
-			outjson["packages"] = port2.PackageActions
-			if outstrm, err := json.MarshalIndent(outjson, "", "\t"); err == nil {
-				fmt.Println(string(outstrm))
-			} else {
-				fmt.Println(err.Error())
-			}
 		} else {
 			fmt.Printf("unable to port: %v", err)
 		}
@@ -203,7 +193,7 @@ func TestModules(t *testing.T) {
 						rpath = fmt.Sprintf("%v@%v.json", module.Name, test.Name)
 					}
 
-					var expect porting.ActionList // TODO: make concrete
+					var expect jsonOut // TODO: make concrete
 					if !test.simple {
 						if b, err := expectedFS.ReadFile(filepath.Join("test/expected", rpath)); err != nil {
 							t.Fatalf("unable to read test data %v: %v", rpath, err)
@@ -282,7 +272,7 @@ func TestModules(t *testing.T) {
 					if len(expect.Modules) != len(out.Modules) {
 						t.FailNow()
 					}
-					moduleSet := make(map[string]*porting.ModuleAction, len(expect.Modules))
+					moduleSet := make(map[string]*base.ModulePin, len(expect.Modules))
 					for i := range expect.Modules {
 						mod := &expect.Modules[i]
 						moduleSet[mod.Path] = mod
@@ -291,14 +281,14 @@ func TestModules(t *testing.T) {
 						if eMod, ok := moduleSet[oMod.Path]; !ok {
 							t.FailNow()
 						} else if !compareModules(eMod, &oMod) {
-							t.FailNow()
+							t.Fatalf("incorrect pinning: %v", eMod.Path)
 						}
 					}
 
 					if len(expect.Packages) != len(out.Packages) {
 						t.FailNow()
 					}
-					packageSet := make(map[string]*porting.PackageAction, len(expect.Packages))
+					packageSet := make(map[string]*base.PackagePatch, len(expect.Packages))
 					for i := range expect.Packages {
 						pkg := &expect.Packages[i]
 						packageSet[pkg.Path] = pkg
@@ -307,7 +297,7 @@ func TestModules(t *testing.T) {
 						if ePkg, ok := packageSet[oPkg.Path]; !ok {
 							t.FailNow()
 						} else if !comparePackages(ePkg, &oPkg) {
-							t.FailNow()
+							t.Fatalf("incorrect patch: %v", ePkg.Path)
 						}
 					}
 				})
@@ -316,25 +306,26 @@ func TestModules(t *testing.T) {
 	}
 }
 
-func compareModules(a *porting.ModuleAction, b *porting.ModuleAction) bool {
+func compareModules(a *base.ModulePin, b *base.ModulePin) bool {
 	if a.Path != b.Path || a.Version != b.Version {
 		return false
 	}
 
-	aVerChanged := a.Fixed != a.Version
-	bVerChanged := b.Fixed != b.Version
+	aVerChanged := a.Pinned != a.Version
+	bVerChanged := b.Pinned != b.Version
 	if aVerChanged != bVerChanged {
 		return false
 	}
 
 	if a.Imported != b.Imported {
+
 		return false
 	}
 
 	return true
 }
 
-func comparePackages(a *porting.PackageAction, b *porting.PackageAction) bool {
+func comparePackages(a *base.PackagePatch, b *base.PackagePatch) bool {
 	if a.Path != b.Path || a.Module != b.Module {
 		return false
 	}
@@ -353,35 +344,36 @@ func comparePackages(a *porting.PackageAction, b *porting.PackageAction) bool {
 		return false
 	}
 
-	if len(a.Tokens) != len(b.Tokens) {
-		return false
-	}
-	tokens := make(map[string]*porting.TokenAction, len(a.Tokens))
-	for i := range a.Tokens {
-		aToken := &a.Tokens[i]
-		tokens[aToken.File+aToken.Token] = aToken
-	}
-	for _, bToken := range b.Tokens {
-		if aToken, ok := tokens[bToken.File+bToken.Token]; !ok {
-			return false
-		} else if aToken.File != bToken.File || aToken.Token != bToken.Token || aToken.Change != bToken.Change {
-			return false
-		}
-	}
-
 	if len(a.Files) != len(b.Files) {
 		return false
 	}
-	files := make(map[string]*porting.FileAction, len(a.Files))
+	files := make(map[string]*base.FilePatch, len(a.Files))
 	for i := range a.Files {
 		aFile := &a.Files[i]
 		files[aFile.Name] = aFile
 	}
 	for _, bFile := range b.Files {
-		if aFile, ok := files[bFile.Name]; !ok {
+		aFile := files[bFile.Name]
+		if aFile == nil {
 			return false
 		} else if aFile.Build != bFile.Build || aFile.BaseFile != bFile.BaseFile {
 			return false
+		}
+
+		if len(aFile.Symbols) != len(bFile.Symbols) {
+			return false
+		}
+		symbols := make(map[string]*base.SymbolRepl, len(aFile.Symbols))
+		for i := range aFile.Symbols {
+			aSymbol := &aFile.Symbols[i]
+			symbols[aSymbol.Original] = aSymbol
+		}
+		for _, bSymbol := range bFile.Symbols {
+			if aSymbol, ok := symbols[bSymbol.Original]; !ok {
+				return false
+			} else if aSymbol.Original != bSymbol.Original {
+				return false
+			}
 		}
 	}
 

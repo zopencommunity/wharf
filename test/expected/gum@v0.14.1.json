@@ -3,13 +3,13 @@
         {
             "Path": "github.com/muesli/termenv",
             "Version": "v0.15.2",
-            "Fixed": "v0.15.2",
+            "Pinned": "v0.15.2",
             "Imported": true
         },
         {
             "Path": "github.com/atotto/clipboard",
             "Version": "v0.1.4",
-            "Fixed": "v0.1.4",
+            "Pinned": "v0.1.4",
             "Imported": true
         }
     ],

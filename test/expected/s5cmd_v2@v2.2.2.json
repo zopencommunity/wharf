@@ -3,13 +3,13 @@
         {
             "Path": "github.com/cheggaaa/pb/v3",
             "Version": "v3.1.4",
-            "Fixed": "v3.1.4",
+            "Pinned": "v3.1.4",
             "Imported": true
         },
         {
             "Path": "github.com/karrick/godirwalk",
             "Version": "v1.15.3",
-            "Fixed": "v1.15.3",
+            "Pinned": "v1.15.3",
             "Imported": true
         }
     ],

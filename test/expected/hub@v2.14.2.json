@@ -3,19 +3,19 @@
         {
             "Path": "github.com/atotto/clipboard",
             "Version": "v0.0.0-20171229224153-bc5958e1c833",
-            "Fixed": "v0.0.0-20171229224153-bc5958e1c833",
+            "Pinned": "v0.0.0-20171229224153-bc5958e1c833",
             "Imported": true
         },
         {
             "Path": "github.com/mattn/go-isatty",
             "Version": "v0.0.3",
-            "Fixed": "v0.0.20",
+            "Pinned": "v0.0.20",
             "Imported": false
         },
         {
             "Path": "golang.org/x/crypto",
             "Version": "v0.0.0-20190308221718-c2843e01d9a2",
-            "Fixed": "v0.23.0",
+            "Pinned": "v0.23.0",
             "Imported": false
         }
     ],

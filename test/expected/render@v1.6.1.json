@@ -3,7 +3,7 @@
             {
                     "Path": "github.com/fsnotify/fsnotify",
                     "Version": "v1.6.0",
-                    "Fixed": "v1.7.0",
+                    "Pinned": "v1.7.0",
                     "Imported": false
             }
     ],

@@ -45,7 +45,6 @@ func List(paths []string) (ImportTree, error) {
 	}
 
 	for len(next) > 0 {
-		// fmt.Fprintf(os.Stderr, "\n--- PASS ---\n")
 		listout, err := util.GoList(next)
 		if err != nil {
 			return ImportTree{}, err
@@ -80,10 +79,11 @@ func List(paths []string) (ImportTree, error) {
 			pkg := identify(meta.ImportPath)
 			pkg.FirstLoad = pkg.Meta == nil
 			doLoad := pkg.FirstLoad || pkg.Meta.Dir != meta.Dir
-			pkg.Dirty = doLoad || pkg.Modified
+			pkg.Dirty = doLoad
 			pkg.Meta = meta
 			pkg.Included = firstLoad
-			pkg.Modified = false
+			pkg.Modified = pkg.modified
+			pkg.modified = false
 			pkg.DepDirty = false
 
 			if firstLoad && !meta.DepOnly {
@@ -163,10 +163,6 @@ func List(paths []string) (ImportTree, error) {
 				}
 
 				if iCount != len(pkg.Meta.Imports) {
-					fmt.Fprintf(os.Stderr, "pkg: %v\n", pkg.Meta.ImportPath)
-					fmt.Fprintf(os.Stderr, "hit: %v\n", touchedIPaths)
-					fmt.Fprintf(os.Stderr, "list: %v\n", pkg.Meta.Imports)
-					fmt.Fprintf(os.Stderr, "expected: %v actual: %v\n", len(pkg.Meta.Imports), iCount)
 					panic("parsed imports and go-list imports length mismatch")
 				}
 
@@ -179,9 +175,6 @@ func List(paths []string) (ImportTree, error) {
 
 			found[meta.ImportPath] = pkg
 			for iPath := range pkg.Imports {
-				if iPath == "github.com/moby/docker-image-spec/specs-go/v1" {
-					fmt.Fprintln(os.Stderr, "perfstat found:", meta.ImportPath)
-				}
 				if mapped, ok := pkg.Meta.ImportMap[iPath]; ok {
 					iPath = mapped
 				}

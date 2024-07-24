@@ -3,25 +3,25 @@
             {
                     "Path": "github.com/charmbracelet/bubbletea",
                     "Version": "v0.25.0",
-                    "Fixed": "v0.26.3",
+                    "Pinned": "v0.26.3",
                     "Imported": false
             },
             {
                     "Path": "github.com/muesli/termenv",
                     "Version": "v0.15.2",
-                    "Fixed": "v0.15.2",
+                    "Pinned": "v0.15.2",
                     "Imported": true
             },
             {
                     "Path": "github.com/atotto/clipboard",
                     "Version": "v0.1.4",
-                    "Fixed": "v0.1.4",
+                    "Pinned": "v0.1.4",
                     "Imported": true
             },
             {
                     "Path": "github.com/antonmedv/clipboard",
                     "Version": "v1.0.1",
-                    "Fixed": "v1.0.1",
+                    "Pinned": "v1.0.1",
                     "Imported": true
             }
     ],
