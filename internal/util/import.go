@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -16,7 +15,12 @@ import (
 )
 
 // Copies a module to the given path
-func CloneModuleFromCache(srcdir string, dstdir string, modpath string) error {
+func CloneModuleFromCache(dstdir string, modpath string) error {
+	srcdir, err := GoListModDir(modpath)
+	if err != nil {
+		return err
+	}
+
 	// Copy module to workspace
 	if err := copyAll(dstdir, srcdir); err != nil {
 		return err
@@ -116,7 +120,7 @@ func generate(file, content string) error {
 	if _, err := os.Stat(file); err == nil {
 		return nil
 	}
-	if err := ioutil.WriteFile(file, []byte(content), 0666); err != nil {
+	if err := os.WriteFile(file, []byte(content), 0666); err != nil {
 		return fmt.Errorf("could not generate %q: %w", file, err)
 	}
 	return nil

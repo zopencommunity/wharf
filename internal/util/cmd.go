@@ -112,6 +112,12 @@ func GoListModUpdate(mod string) (string, error) {
 	return runout(cmd)
 }
 
+// Run go list -m and return the directory of the active version
+func GoListModDir(mod string) (string, error) {
+	cmd := exec.Command("go", "list", "-f", "{{if .Replace}}{{.Replace.Dir}}{{else}}{{.Dir}}{{end}}", "-m", "-mod=readonly", mod)
+	return runout(cmd)
+}
+
 // Run go list
 func GoList(pkgs []string) (string, error) {
 	cmd := exec.Command("go", append([]string{"list", "-json", "-e", "-deps", "-mod=readonly"}, pkgs...)...)

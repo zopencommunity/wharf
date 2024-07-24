@@ -6,7 +6,9 @@ package pkg2
 
 import (
 	"go/ast"
+	"go/parser"
 	"go/token"
+	"os"
 	"path"
 	"regexp"
 	"strconv"
@@ -90,7 +92,7 @@ func (tree *ImportTree) Groups() [][]*Package {
 // - Build topology
 // - Check for cycles
 // - Build exported types for packages
-func (tree *ImportTree) Resolve(onVisit func(*Package)) error {
+func (tree *ImportTree) Resolve() error {
 	layers := make([][]*Package, 0, 30)
 	layers = append(layers, make([]*Package, 0))
 	visited := make(map[string]bool, len(cache))
@@ -126,14 +128,12 @@ func (tree *ImportTree) Resolve(onVisit func(*Package)) error {
 				return -1, err
 			}
 
-			pkg.DepDirty = pkg.DepDirty || ipkg.DepDirty || ipkg.Dirty
+			pkg.DepDirty = pkg.DepDirty || ipkg.DepDirty || ipkg.Dirty || ipkg.Modified
 			// If the child's level is higher or identical to our currently known level we move up
 			if seenlevel >= level {
 				level = seenlevel + 1
 			}
 		}
-
-		onVisit(pkg)
 
 		// We now have a known level, so we attach the import layer
 		for len(layers) <= level {
@@ -163,6 +163,7 @@ func (tree *ImportTree) Resolve(onVisit func(*Package)) error {
 	}
 
 	tree.resolved = true
+	tree.groups = layers
 	return nil
 }
 
@@ -190,6 +191,9 @@ type Package struct {
 	// Set if a dependency (direct or in-direct) is dirty
 	DepDirty bool
 
+	// Internal control mechanism for setting modified status
+	modified bool
+
 	// Set if the package has been modified manually
 	Modified bool
 
@@ -201,6 +205,44 @@ type Package struct {
 
 	// Any errors that occurred during load
 	Errors []error
+}
+
+func (pkg *Package) LoadSyntax(build int) error {
+	cfg := &pkg.Builds[build]
+	// Make sure we have the syntax loaded
+	if cfg.Syntax == nil {
+		for _, gofile := range cfg.Files {
+			if gofile.Syntax == nil {
+				src, err := os.ReadFile(gofile.Path)
+				if err != nil {
+					return err
+				}
+
+				parsed, err := parser.ParseFile(FileSet, gofile.Name, src, 0)
+				if err != nil {
+					return err
+				}
+				gofile.Syntax = parsed
+			}
+			cfg.Syntax = append(cfg.Syntax, gofile.Syntax)
+		}
+	}
+	return nil
+}
+
+func (pkg *Package) LookupImport(pkgName string, fileName string) *Package {
+	file := pkg.Files[fileName]
+	if file.Imports[pkgName] != "" {
+		return pkg.Imports[file.Imports[pkgName]]
+	} else if backup := BackupNameLookup(pkgName); backup != nil {
+		return backup
+	} else {
+		return nil
+	}
+}
+
+func (pkg *Package) MarkModified() {
+	pkg.modified = true
 }
 
 func (pkg *Package) String() string {

@@ -505,9 +505,9 @@ func apply(pkgs []*packages.Package) error {
 					return err
 				}
 			} else {
-				if err := util.CloneModuleFromCache(pkg.Module.Dir, path, pkg.Module.Path); err != nil {
-					return err
-				}
+				// if err := util.CloneModuleFromCache(pkg.Module.Dir, path, pkg.Module.Path); err != nil {
+				// 	return err
+				// }
 			}
 
 			if err := util.GoWorkEditDropReplace(pkg.Module.Path); err != nil {

@@ -3,7 +3,7 @@
         {
             "Path": "golang.org/x/sys",
             "Version": "v0.0.0-20191026070338-33540a1f6037",
-            "Fixed": "v0.20.0",
+            "Pinned": "v0.20.0",
             "Imported": false
         }
     ],
