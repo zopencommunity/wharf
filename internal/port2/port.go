@@ -36,7 +36,7 @@ const (
 func (ctx *Context) Port(pkg *pkg2.Package) (Result, error) {
 	handle := ctx.handles[pkg]
 	if handle == nil {
-		panic("pkg not registered")
+		panic(fmt.Sprintf("%v: pkg not registered", pkg.Meta.ImportPath))
 	}
 
 	if !handle.included || handle.exhausted {
@@ -45,7 +45,7 @@ func (ctx *Context) Port(pkg *pkg2.Package) (Result, error) {
 
 	if handle.patched {
 		if handle.incomplete {
-			panic("trying to port package that already has patch associated with it")
+			handle.panic("trying to port package that already has patch associated with it")
 		}
 		return RESULT_CONTINUE, nil
 	}
@@ -151,7 +151,7 @@ func (handle *Handle) port() error {
 			ipkg := pkg.LookupImport(iname.PkgName, err.Err.Fset.Position(err.Err.Pos).Filename)
 
 			if ipkg == nil {
-				panic("bad import on unknown package")
+				handle.panic(fmt.Sprintf("type check got %v but cannot identify import path for %v", err.Err, iname.PkgName))
 			}
 			if handle.ctx.handles[ipkg].exhausted {
 				needTag = true
@@ -192,7 +192,7 @@ func (handle *Handle) port() error {
 					ipkg := pkg.LookupImport(iname.PkgName, err.Err.Fset.Position(err.Err.Pos).Filename)
 
 					if ipkg == nil {
-						panic("bad import on unknown package")
+						handle.panic(fmt.Sprintf("type check got %v but cannot identify import path for %v", err.Err, iname.PkgName))
 					}
 					imports[ipkg] = true
 				} else if !err.Err.Soft {
@@ -232,7 +232,7 @@ func (handle *Handle) port() error {
 		ih.included = true
 
 		if ih.patched {
-			panic("package is claimed to be patchable but has bad parent")
+			ih.panic(fmt.Sprintf("package is marked as patched but has broken parent %v", pkg.Meta.ImportPath))
 		}
 
 		if !ih.exhausted {
@@ -264,7 +264,7 @@ func (handle *Handle) port() error {
 				file := err.Err.Fset.Position(err.Err.Pos).Filename
 				ipkg := pkg.LookupImport(info.PkgName, file)
 				if ipkg == nil {
-					panic("bad import on unknown package")
+					handle.panic(fmt.Sprintf("type check got %v but cannot identify import path for %v", err.Err, info.PkgName))
 				}
 
 				directives := base.Inlines[ipkg.Meta.ImportPath]
@@ -371,7 +371,7 @@ func (handle *Handle) validate() bool {
 					if backup := pkg2.BackupNameLookup(info.PkgName); backup != nil {
 						ipath = backup.Meta.ImportPath
 					} else {
-						panic("bad import error but no known name in lookup")
+						handle.panic(fmt.Sprintf("type check got %v but cannot identify import path for %v", err.Err, info.PkgName))
 					}
 				}
 

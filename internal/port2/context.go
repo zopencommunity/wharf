@@ -96,7 +96,7 @@ func (ctx *Context) CollectPatches() []base.PackagePatch {
 						case base.InlineConstSym:
 							repstr = ed.Replace
 						default:
-							panic("unknown export directive type")
+							handle.panic("unknown export directive type")
 						}
 						fileAction.Symbols = append(fileAction.Symbols, base.SymbolRepl{
 							Original: fmt.Sprintf("%v.%v", iname, symname),
