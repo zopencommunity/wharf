@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/zosopentools/wharf/internal/base"
-	"github.com/zosopentools/wharf/internal/porting"
 	"golang.org/x/tools/go/vcs"
 	"gopkg.in/yaml.v3"
 )
@@ -113,8 +112,8 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	if _, ranAsWharf := os.LookupEnv(WHARF_TEST_RUN); ranAsWharf {
-		porting.SuppressOutput = true
-		if err := main2(os.Args[1:], false); err == nil {
+		if out, err := main2(os.Args[1:], true); err == nil {
+			printJson(out)
 		} else {
 			fmt.Printf("unable to port: %v", err)
 		}
@@ -248,8 +247,11 @@ func TestModules(t *testing.T) {
 					} else if _, err = os.Stat(filepath.Join(testRoot, "go.work")); err != nil {
 						t.Fatalf("go.work not created: unable to stat go.work: %v", err)
 					}
-					// cpcmd := exec.Command("cp", "-r", testRoot, "/home/macmala/wharf-wk/testout")
-					// cpcmd.Run()
+
+					if err := os.MkdirAll(base.Cache, 0755); err != nil {
+						t.Fatalf("unable to create cache at %v: %v\n", base.Cache, err)
+					}
+
 					cmd = exec.Command(testBin, test.Paths...)
 					cmd.Dir = testRoot
 					cmd.Env = append(os.Environ(), "WHARF_TEST_RUN=1")
@@ -378,4 +380,12 @@ func comparePackages(a *base.PackagePatch, b *base.PackagePatch) bool {
 	}
 
 	return true
+}
+
+func printJson(out *base.Output) {
+	if outstrm, err := json.MarshalIndent(out, "", "\t"); err == nil {
+		fmt.Println(string(outstrm))
+	} else {
+		fmt.Println(err.Error())
+	}
 }

@@ -66,12 +66,6 @@ var BuildTags = make(map[string]bool)
 var ImportDir string
 var Cache string
 
-var Verbose bool
-var DryRun bool
-var CloneFromVCS bool
-var GeneratePatches bool
-var ShowDiscovery bool
-
 func GOOS() string {
 	return goenv["GOOS"]
 }
