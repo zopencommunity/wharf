@@ -18,6 +18,12 @@ import (
 	"github.com/zosopentools/wharf/internal/util"
 )
 
+var debugPath string
+
+func lpanic(msg string) {
+	panic(fmt.Sprintf("%v: %v", debugPath, msg))
+}
+
 var cache map[string]*Package = make(map[string]*Package, 50)
 
 // Use go-list to load all packages and build the initial tree
@@ -66,12 +72,13 @@ func List(paths []string) (ImportTree, error) {
 		}
 
 		for _, meta := range metaPkgs {
+			debugPath = meta.ImportPath
 			if seeking[meta.ImportPath] {
 				delete(seeking, meta.ImportPath)
 			}
 			if found[meta.ImportPath] != nil {
 				if !meta.DepOnly {
-					panic("loaded a package more than once in the same pass")
+					lpanic("loaded a package more than once in the same pass")
 				}
 				continue
 			}
@@ -163,12 +170,12 @@ func List(paths []string) (ImportTree, error) {
 				}
 
 				if iCount != len(pkg.Meta.Imports) {
-					panic("parsed imports and go-list imports length mismatch")
+					lpanic(fmt.Sprintf("parsed imports and go-list imports length mismatch: found %v wanted %v", iCount, len(pkg.Meta.Imports)))
 				}
 
 				for _, iPath := range pkg.Meta.Imports {
 					if !touchedIPaths[iPath] {
-						panic("parsed imports list missing go-list entry")
+						lpanic(fmt.Sprintf("parsed imports list missing go-list entry: %v", iPath))
 					}
 				}
 			}
@@ -195,6 +202,10 @@ func List(paths []string) (ImportTree, error) {
 }
 
 func loadPkg(pkg *Package) error {
+	var debugFile string
+	fpanic := func(msg string) {
+		lpanic(fmt.Sprintf("%v: %v", debugFile, msg))
+	}
 	pkg.Builds = make([]BuildConfig, 0, 2)
 	pkg.Files = make(map[string]*GoFile, len(pkg.Meta.GoFiles)+len(pkg.Meta.CgoFiles)+len(pkg.Meta.IgnoredGoFiles))
 	pkg.Imports = make(map[string]*Package, len(pkg.Meta.Imports))
@@ -223,7 +234,7 @@ func loadPkg(pkg *Package) error {
 	getHash := func() uint64 {
 		hashCheck += 1
 		if hashCheck >= 64 {
-			panic("too many hashes")
+			lpanic("too many hashes")
 		}
 
 		hash := nextHash
@@ -239,6 +250,7 @@ func loadPkg(pkg *Package) error {
 
 	// Read normal go files that are built
 	for _, fname := range pkg.Meta.GoFiles {
+		debugFile = fname
 		file := &GoFile{
 			Name:    fname,
 			Path:    filepath.Join(pkg.Meta.Dir, fname),
@@ -250,7 +262,7 @@ func loadPkg(pkg *Package) error {
 		}
 
 		if file.Cgo {
-			panic("cgo file found when parsing non-cgo files")
+			fpanic("cgo file found when parsing non-cgo files")
 		}
 
 		pkg.Builds[0].Files = append(pkg.Builds[0].Files, file)
@@ -281,14 +293,15 @@ func loadPkg(pkg *Package) error {
 				platforms[tag].hash += hash
 			}
 		case tags.Ignored:
-			panic("build never constraint found for actively built go file")
+			fpanic("build never constraint found for actively built go file")
 		default:
-			panic("invalid build constraint type")
+			fpanic("invalid build constraint type")
 		}
 	}
 
 	// Read CGo files that are built
 	for _, fname := range pkg.Meta.CgoFiles {
+		debugFile = fname
 		file := &GoFile{
 			Name:    fname,
 			Path:    filepath.Join(pkg.Meta.Dir, fname),
@@ -300,7 +313,7 @@ func loadPkg(pkg *Package) error {
 		}
 
 		if !file.Cgo {
-			panic("non-cgo file found when parsing cgo files")
+			fpanic("non-cgo file found when parsing cgo files")
 		}
 
 		pkg.Builds[0].Files = append(pkg.Builds[0].Files, file)
@@ -331,14 +344,15 @@ func loadPkg(pkg *Package) error {
 				platforms[tag].hash += hash
 			}
 		case tags.Ignored:
-			panic("build never constraint found for actively built cgo file")
+			fpanic("build never constraint found for actively built cgo file")
 		default:
-			panic("invalid build constraint type")
+			fpanic("invalid build constraint type")
 		}
 	}
 
 	if !IsStdlibPkg(pkg) {
 		for _, fname := range pkg.Meta.IgnoredGoFiles {
+			debugFile = fname
 			file := &GoFile{
 				Name: fname,
 				Path: filepath.Join(pkg.Meta.Dir, fname),
@@ -350,9 +364,9 @@ func loadPkg(pkg *Package) error {
 
 			switch cnstr := file.Tags.(type) {
 			case tags.All:
-				panic("build always constraint found for ignored file")
+				fpanic("build always constraint found for ignored file")
 			case tags.Supported:
-				panic("build for GOOS constraint found for ignored file")
+				fpanic("build for GOOS constraint found for ignored file")
 			case tags.Platforms:
 				hash := getHash()
 				for tag := range cnstr {
@@ -368,7 +382,7 @@ func loadPkg(pkg *Package) error {
 			case tags.Ignored:
 				continue
 			default:
-				panic("invalid build constraint type")
+				fpanic("invalid build constraint type")
 			}
 		}
 
@@ -434,7 +448,7 @@ func loadGoFile(file *GoFile, fset *token.FileSet, syntax bool, forceLoad bool) 
 		var name string
 		if isyn.Name != nil {
 			name = isyn.Name.Name
-			if name == "_" {
+			if name == "_" || name == "." {
 				file.AnonImports = append(file.AnonImports, ipath)
 				continue
 			}
@@ -457,7 +471,7 @@ func loadGoFile(file *GoFile, fset *token.FileSet, syntax bool, forceLoad bool) 
 			}
 		}
 		if file.Imports[name] != "" {
-			panic("duplicate import name found")
+			lpanic(fmt.Sprintf("%v: duplicate import name %v: (%v, %v)", file.Name, name, file.Imports[name], ipath))
 		}
 		file.Imports[name] = ipath
 	}

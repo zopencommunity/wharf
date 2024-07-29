@@ -87,16 +87,16 @@ func (handle *Handle) typeCheck(build int, cfg *types.Config) (typed *types.Pack
 
 		ipkg := handle.pkg.Imports[path]
 		if ipkg == nil {
-			panic("unknown imported package path requested during type check")
+			handle.panic(fmt.Sprintf("unknown imported package %v requested during type check", path))
 		}
 
 		ih := handle.ctx.handles[ipkg]
 		if ih == nil {
-			panic("imported package with uninitialized state found during type check")
+			handle.panic(fmt.Sprintf("imported package %v with uninitialized state found during type check", path))
 		}
 
 		if ih.types == nil {
-			panic("imported package with unintialized types object found during type check")
+			handle.panic(fmt.Sprintf("imported package %v with unintialized types object found during type check", path))
 		}
 
 		return ih.types, nil
