@@ -10,7 +10,6 @@ import (
 	"github.com/zosopentools/wharf/internal/base"
 	"github.com/zosopentools/wharf/internal/pkg2"
 	"github.com/zosopentools/wharf/internal/port2"
-	"github.com/zosopentools/wharf/internal/util"
 )
 
 func main2(
@@ -33,10 +32,6 @@ func main2(
 func run(paths []string, ctx *port2.Context, mute bool) error {
 	firstPass := true
 load:
-	if err := util.GoModTidy(); err != nil {
-		return err
-	}
-
 	tree, err := pkg2.List(paths)
 	if err != nil {
 		return err
