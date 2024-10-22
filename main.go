@@ -175,6 +175,7 @@ func main() {
 	for _, pin := range out.Modules {
 		if pin.Imported {
 			if !madeImportDir {
+				madeImportDir = true
 				if err := os.Mkdir(base.ImportDir, 0755); err != nil {
 					log.Printf("ERROR: unable to create folder for importing modules: %v: %v", base.ImportDir, err)
 					failed = true
