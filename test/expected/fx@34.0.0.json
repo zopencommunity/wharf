@@ -7,12 +7,6 @@
                     "Imported": false
             },
             {
-                    "Path": "github.com/muesli/termenv",
-                    "Version": "v0.15.2",
-                    "Pinned": "v0.15.2",
-                    "Imported": true
-            },
-            {
                     "Path": "github.com/atotto/clipboard",
                     "Version": "v0.1.4",
                     "Pinned": "v0.1.4",
@@ -26,27 +20,6 @@
             }
     ],
     "packages": [
-            {
-                    "Path": "github.com/muesli/termenv",
-                    "Module": "github.com/muesli/termenv",
-                    "Tags": [
-                            "linux"
-                    ],
-                    "Files": [
-                            {
-                                    "Name": "constants_linux.go",
-                                    "Build": true
-                            },
-                            {
-                                    "Name": "termenv_posix.go",
-                                    "Build": true
-                            },
-                            {
-                                    "Name": "termenv_unix.go",
-                                    "Build": true
-                            }
-                    ]
-            },
             {
                     "Path": "github.com/atotto/clipboard",
                     "Module": "github.com/atotto/clipboard",
