@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-isatty"
@@ -182,7 +183,7 @@ func main() {
 					break
 				}
 			}
-			pin.Dir, _ = pkg2.ImportPathToAssumedName(pin.Path)
+			pin.Dir = importFolderName(pin.Path)
 			pin.Dir = filepath.Join(base.ImportDir, pin.Dir)
 			if err := importModule(pin, *vcsFlag); err != nil {
 				failed = true
@@ -411,4 +412,27 @@ func applyPatch(patch base.PackagePatch) error {
 	}
 
 	return nil
+}
+
+func importFolderName(importPath string) string {
+	segments := strings.Split(importPath, "/")
+	base := segments[len(segments)-1]
+	decor := ""
+	if strings.HasPrefix(base, "v") {
+		if _, err := strconv.Atoi(base[1:]); err == nil {
+			decor = base
+			segments = segments[:len(segments)-1]
+		}
+	}
+
+	base = segments[len(segments)-1]
+	if len(segments) > 1 {
+		base = segments[len(segments)-2] + "-" + base
+	}
+
+	if decor != "" {
+		base = base + "-" + decor
+	}
+
+	return base
 }
